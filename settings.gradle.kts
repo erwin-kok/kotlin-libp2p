@@ -1,0 +1,24 @@
+// Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        google()
+    }
+}
+
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+
+    includeBuild("build-logic")
+}
+
+rootProject.name = "kotlin-libp2p"
+
+include(":libp2p-core")
+include(":libp2p-testing")
+include(":libp2p-transport-tcp")
