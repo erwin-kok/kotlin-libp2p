@@ -3,7 +3,7 @@
 package org.erwinkok.libp2p.core.network.securitymuxer
 
 import mu.KotlinLogging
-import org.erwinkok.libp2p.core.PeerId
+import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.multiformat.multistream.MultistreamMuxer

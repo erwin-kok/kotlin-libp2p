@@ -15,7 +15,6 @@ import org.erwinkok.libp2p.core.network.transport.TransportConnection
 import org.erwinkok.libp2p.core.network.upgrader.Upgrader
 import org.erwinkok.result.Err
 import org.erwinkok.result.Result
-import org.erwinkok.result.errorMessage
 import org.erwinkok.result.map
 import java.nio.channels.ClosedChannelException
 
@@ -44,7 +43,7 @@ class TcpListener(
                     return upgrader.upgradeInbound(transport, transportConnection)
                 }
         } catch (e: ClosedChannelException) {
-            return Err("Could not accept connection: ${errorMessage(e)}")
+            return Err("Could not accept connection, channel was closed")
         }
     }
 

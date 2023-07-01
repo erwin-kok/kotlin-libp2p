@@ -14,7 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import org.erwinkok.libp2p.core.PeerId
+import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.upgrader.UpgradedTransportConnection

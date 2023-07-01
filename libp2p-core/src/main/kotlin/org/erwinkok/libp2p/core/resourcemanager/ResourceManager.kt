@@ -3,7 +3,7 @@
 package org.erwinkok.libp2p.core.resourcemanager
 
 import io.ktor.utils.io.core.Closeable
-import org.erwinkok.libp2p.core.PeerId
+import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.result.Result

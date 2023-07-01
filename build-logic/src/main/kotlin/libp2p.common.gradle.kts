@@ -23,15 +23,6 @@ kotlin {
 //    explicitApi()
 }
 
-// testing {
-//    suites {
-//        val test by getting(JvmTestSuite::class) {
-//            testType.set(TestSuiteType.UNIT_TEST)
-//            useJUnitJupiter()
-//        }
-//    }
-// }
-
 ktlint {
     verbose.set(true)
     outputToConsole.set(true)
