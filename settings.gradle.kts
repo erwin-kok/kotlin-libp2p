@@ -20,5 +20,6 @@ pluginManagement {
 rootProject.name = "kotlin-libp2p"
 
 include(":libp2p-core")
+include(":libp2p-crypto")
 include(":libp2p-testing")
 include(":libp2p-transport-tcp")

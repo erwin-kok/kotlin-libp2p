@@ -8,7 +8,7 @@ import io.ktor.utils.io.core.internal.ChunkBuffer
 import io.ktor.utils.io.pool.ObjectPool
 import kotlinx.coroutines.CoroutineDispatcher
 import mu.KotlinLogging
-import org.erwinkok.libp2p.core.PeerId
+import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.NetworkProtocol

@@ -2,7 +2,7 @@
 
 package org.erwinkok.libp2p.core.resourcemanager
 
-import org.erwinkok.libp2p.core.PeerId
+import org.erwinkok.libp2p.core.host.PeerId
 
 interface PeerScope : ResourceScope {
     fun peer(): PeerId

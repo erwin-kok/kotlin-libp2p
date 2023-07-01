@@ -2,7 +2,7 @@
 
 package org.erwinkok.libp2p.core.resourcemanager
 
-import org.erwinkok.libp2p.core.PeerId
+import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.Result
 

@@ -2,8 +2,8 @@
 
 package org.erwinkok.libp2p.core.network.securitymuxer
 
-import org.erwinkok.libp2p.core.PeerId
 import org.erwinkok.libp2p.core.host.LocalIdentity
+import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.result.Result
 

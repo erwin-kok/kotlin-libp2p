@@ -13,6 +13,8 @@ dependencies {
     implementation(platform(kotlin("bom")))
     implementation(kotlin("stdlib"))
 
+    implementation(projects.libp2pCrypto)
+
     implementation(libs.aedile)
     implementation(libs.slf4j.api)
     implementation(libs.kotlin.logging)

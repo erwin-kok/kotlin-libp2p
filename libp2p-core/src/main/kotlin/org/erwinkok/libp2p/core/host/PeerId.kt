@@ -1,7 +1,10 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 
-package org.erwinkok.libp2p.core
+package org.erwinkok.libp2p.core.host
 
+import org.erwinkok.libp2p.crypto.CryptoUtil
+import org.erwinkok.libp2p.crypto.PrivateKey
+import org.erwinkok.libp2p.crypto.PublicKey
 import org.erwinkok.multiformat.cid.Cid
 import org.erwinkok.multiformat.multibase.bases.Base58
 import org.erwinkok.multiformat.multicodec.Multicodec
@@ -11,6 +14,7 @@ import org.erwinkok.result.Error
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.flatMap
+import org.erwinkok.result.getOrElse
 import org.erwinkok.result.getOrThrow
 import org.erwinkok.result.map
 
@@ -32,6 +36,23 @@ class PeerId private constructor(val multihash: Multihash) {
             val end = pid.substring(pid.length - 6)
             "<PeerId $start*$end>"
         }
+    }
+
+    fun matchesPrivateKey(privateKey: PrivateKey): Boolean {
+        return matchesPublicKey(privateKey.publicKey)
+    }
+
+    fun matchesPublicKey(publicKey: PublicKey): Boolean {
+        val oid = fromPublicKey(publicKey)
+            .getOrElse { return false }
+        return this == oid
+    }
+
+    fun extractPublicKey(): Result<PublicKey> {
+        if (multihash.type != Multicodec.IDENTITY) {
+            return Err(ErrNoPublicKey)
+        }
+        return CryptoUtil.unmarshalPublicKey(multihash.digest)
     }
 
     fun validate(): Boolean {
@@ -89,6 +110,22 @@ class PeerId private constructor(val multihash: Multihash) {
         val Null = Multihash.fromTypeAndDigest(Multicodec.IDENTITY, byteArrayOf(0))
             .map { PeerId(it) }
             .getOrThrow()
+
+        fun fromPublicKey(publicKey: PublicKey): Result<PeerId> {
+            val bytes = CryptoUtil.marshalPublicKey(publicKey)
+                .getOrElse { return Err(it) }
+            val algorithm = if (AdvancedEnableInlining && bytes.size <= maxInlineKeyLength) {
+                Multicodec.IDENTITY
+            } else {
+                Multicodec.SHA2_256
+            }
+            return Multihash.sum(algorithm, bytes, -1)
+                .map { PeerId(it) }
+        }
+
+        fun fromPrivateKey(privateKey: PrivateKey): Result<PeerId> {
+            return fromPublicKey(privateKey.publicKey)
+        }
 
         fun fromString(s: String): Result<PeerId> {
             return Multihash.fromBase58(s)

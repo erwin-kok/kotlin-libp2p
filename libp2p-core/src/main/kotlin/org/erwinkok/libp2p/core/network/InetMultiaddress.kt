@@ -6,7 +6,7 @@ import inet.ipaddr.HostName
 import inet.ipaddr.IPAddressString
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.SocketAddress
-import org.erwinkok.libp2p.core.PeerId
+import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.multiformat.multiaddress.Multiaddress
 import org.erwinkok.multiformat.multiaddress.Protocol
 import org.erwinkok.multiformat.multiaddress.components.Component
