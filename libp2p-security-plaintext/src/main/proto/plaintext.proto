@@ -1,0 +1,10 @@
+syntax = "proto2";
+
+package org.erwinkok.libp2p.core.plaintext.pb;
+
+import "crypto.proto";
+
+message Exchange {
+    optional bytes id = 1;
+    optional org.erwinkok.libp2p.crypto.pb.PublicKey pubkey = 2;
+}

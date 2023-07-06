@@ -21,5 +21,7 @@ rootProject.name = "kotlin-libp2p"
 
 include(":libp2p-core")
 include(":libp2p-crypto")
+include(":libp2p-security-noise")
+include(":libp2p-security-plaintext")
 include(":libp2p-testing")
 include(":libp2p-transport-tcp")

@@ -14,6 +14,7 @@ dependencies {
 
     implementation(testFixtures(libs.result.monad))
     implementation(projects.libp2pCore)
+    implementation(projects.libp2pCrypto)
     implementation(libs.io.mockk.mockk)
     implementation(libs.junit.jupiter.api)
     implementation(libs.junit.jupiter.params)
