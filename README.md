@@ -7,17 +7,50 @@
 
 ## Disclaimer
 
-This is my personal pet project which is currently under heavy development (WIP). For the moment I have the following goal in mind:
+Welcome to my personal pet project! This project is currently under heavy development (WIP), and as such I do not
+guarantee functionality, stable interfaces and/or operation without any bugs/issues (See also [`LICENSE`](LICENSE) for
+more details). The current main goal of this project is educational, and to research new technologies.
 
-I think libp2p is a great technology which has a lot of opportunities. Although I have a lot of experience in cloud technology and
-backend, I have not (yet) a lot of experience in libp2p itself, coroutines, kademlia, and such. So the current goal of this project 
-is educational for me, meaning I do not guarantee functionality, stable interfaces or operation without any bugs/issues.
+## libp2p overview
 
-See also LICENSE.
+Traditional communication is client-server based. The client initiates a connection to the server, and communicates with
+the server using a protocol suited for that server. As an example: suppose we have two WhatsApp clients lets say `A`
+and `B`. And `A` wants to send a message to `B`. Typically they both initiate a message to the server. `A` sends a
+message to the server and tells the server to relay this message to `B`. The server knows both clients so this
+communication is pretty straightforward.
 
-## libp2p
+In a peer-to-peer network (P2P), this communication happens quite differently. There is no longer a server, only
+clients (commonly they are referred to as `nodes` or `peers`) organized in a mesh network and they communicate directly
+to each other. For this to work a few challenges have to be solved:
 
-See for a description of libp2p: https://libp2p.io/
+- How do the nodes know and find each other? In a client-server communication, the client established the connection to
+  the server, and the server is known by some pre-defined ip address (or addresses). In a P2P mesh network how to know
+  the ip address of the client? Potentially, the client is roaming which means its ip address can change over time.
+
+- How can a node directly connect to another node? In client-server communication, the client initiates a connection to
+  the server. This is an outbound connection. However, in a P2P connection, a node connects directly to another node,
+  which is an inbound connection. Inbound connections are not always possible. Think of security (the router rejects
+  inbound connection attempts), but also think of NAT devices (what is the correct ip address? A node might know a
+  different ip address of itself than the outside world is able to connect to).
+
+- Which wire protocol to use? In a client-server network the used protocol is obvious: the server dictates the protocol
+  to be used, or else it rejects the connection. A server can easily support the current protocol version while also
+  supporting the older version(s) temporarily. A server can also force a client upgrade. In a P2P network this is not
+  obvious, because there are several nodes connected to each other. They all could have a different implementation with
+  different capabilities and with different versions.
+
+There already exists some P2P network protocols, but they lacked standardization. Libp2p standardizes they way nodes
+communicate to each other and has a solution for the above mentioned issues (and more).
+
+See for an in-depth description of libp2p, please see: https://libp2p.io/
+
+## Features
+
+## Getting started
+
+## Contact
+
+If you want to contact me, please write an e-mail to: [erwin-kok@gmx.com](mailto:erwin-kok@gmx.com)
 
 ## License
 
