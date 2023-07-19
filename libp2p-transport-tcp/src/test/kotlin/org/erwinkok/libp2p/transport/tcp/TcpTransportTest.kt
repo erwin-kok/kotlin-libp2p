@@ -136,7 +136,6 @@ internal class TcpTransportTest {
         coVerify { upgrader.upgradeOutbound(any(), any(), any(), any(), any()) }
 
         server.close()
-        thread.interrupt()
         thread.join()
 
         assertTrue(connected)

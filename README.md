@@ -15,12 +15,12 @@ more details). The current main goal of this project is educational, and to rese
 
 Traditional communication is client-server based. The client initiates a connection to the server, and communicates with
 the server using a protocol suited for that server. As an example: suppose we have two WhatsApp clients lets say `A`
-and `B`. And `A` wants to send a message to `B`. Typically they both initiate a message to the server. `A` sends a
+and `B`. And `A` wants to send a message to `B`. Typically, they both initiate a connection to the server. `A` sends a
 message to the server and tells the server to relay this message to `B`. The server knows both clients so this
 communication is pretty straightforward.
 
 In a peer-to-peer network (P2P), this communication happens quite differently. There is no longer a server, only
-clients (commonly they are referred to as `nodes` or `peers`) organized in a mesh network and they communicate directly
+clients (commonly they are referred to as `nodes` or `peers`) organized in a mesh network, and they communicate directly
 to each other. For this to work a few challenges have to be solved:
 
 - How do the nodes know and find each other? In a client-server communication, the client established the connection to
@@ -40,7 +40,7 @@ to each other. For this to work a few challenges have to be solved:
   different capabilities and with different versions.
 
 There already exists some P2P network protocols, but they lacked standardization. Libp2p standardizes they way nodes
-communicate to each other and has a solution for the above mentioned issues (and more).
+communicate to each other and has a solution for the above-mentioned issues (and more).
 
 See for an in-depth description of libp2p, please see: https://libp2p.io/
 
