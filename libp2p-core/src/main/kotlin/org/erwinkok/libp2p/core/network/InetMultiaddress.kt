@@ -47,6 +47,9 @@ class InetMultiaddress private constructor(val hostName: HostName?, val networkP
             return hn.isValid && hn.port != null && hn.port > 0 && networkProtocol == NetworkProtocol.TCP
         }
 
+    val isNotEmpty: Boolean
+        get() = bytes.isNotEmpty()
+
     fun withHostName(hostName: HostName): InetMultiaddress {
         return InetMultiaddress(hostName, networkProtocol, multihash, components)
     }
