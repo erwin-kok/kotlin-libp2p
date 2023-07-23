@@ -28,8 +28,6 @@ import org.erwinkok.result.Ok
 import org.erwinkok.result.coAssertErrorResult
 import org.erwinkok.result.errorMessage
 import org.erwinkok.result.expectNoErrors
-import org.erwinkok.util.Tuple
-import org.erwinkok.util.Tuple2
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -38,7 +36,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.net.ServerSocket
-import kotlin.concurrent.thread
 
 internal class TcpTransportTest {
     private val validMultiaddress = InetMultiaddress.fromString("/ip4/127.0.0.1/tcp/1234").expectNoErrors()
@@ -121,10 +118,12 @@ internal class TcpTransportTest {
 
     @Test
     fun testDialing() = runTest {
+        val server = ServerSocket(0)
         var connected = false
-        val (server, thread) = server { clientSocket ->
-            connected = true
+        val job = launch {
+            val clientSocket = server.accept()
             clientSocket.close()
+            connected = true
         }
 
         val multiaddress = InetMultiaddress.fromString("/ip4/127.0.0.1/tcp/${server.localPort}").expectNoErrors()
@@ -135,8 +134,7 @@ internal class TcpTransportTest {
 
         coVerify { upgrader.upgradeOutbound(any(), any(), any(), any(), any()) }
 
-        server.close()
-        thread.join()
+        job.join()
 
         assertTrue(connected)
     }
@@ -160,25 +158,5 @@ internal class TcpTransportTest {
 
         coVerify { upgrader.upgradeInbound(any(), any()) }
         assertTrue(connected)
-    }
-
-    private fun server(block: (java.net.Socket) -> Unit): Tuple2<ServerSocket, Thread> {
-        val server = ServerSocket(0)
-        val thread = thread(start = false) {
-            while (true) {
-                val client = try {
-                    server.accept()
-                } catch (t: Throwable) {
-                    break
-                }
-                try {
-                    block(client)
-                } catch (t: Throwable) {
-                    errors.add(t)
-                }
-            }
-        }
-        thread.start()
-        return Tuple(server, thread)
     }
 }

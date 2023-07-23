@@ -64,7 +64,7 @@ interface Write {
 }
 
 interface BatchingFeature {
-    suspend fun batch(): Result<Batch>
+    fun batch(): Result<Batch>
 }
 
 interface CheckedFeature {

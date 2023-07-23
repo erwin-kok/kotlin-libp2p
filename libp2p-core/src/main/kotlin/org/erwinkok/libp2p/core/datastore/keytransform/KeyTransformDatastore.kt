@@ -88,7 +88,7 @@ class KeyTransformDatastore(
         return Ok(Unit)
     }
 
-    override suspend fun batch(): Result<Batch> {
+    override fun batch(): Result<Batch> {
         if (ds !is BatchingFeature) {
             return Err(ErrBatchUnsupported)
         }

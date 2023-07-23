@@ -90,7 +90,7 @@ class FsDatastore private constructor(
         return Ok(Unit)
     }
 
-    override suspend fun batch(): Result<Batch> {
+    override fun batch(): Result<Batch> {
         return Ok(BasicBatch(this))
     }
 

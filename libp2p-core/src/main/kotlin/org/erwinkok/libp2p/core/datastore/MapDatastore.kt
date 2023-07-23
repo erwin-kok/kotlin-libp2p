@@ -67,7 +67,7 @@ class MapDatastore(
         )
     }
 
-    override suspend fun batch(): Result<Batch> {
+    override fun batch(): Result<Batch> {
         return Ok(BasicBatch(this))
     }
 

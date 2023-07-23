@@ -199,9 +199,7 @@ class BasicConnectionGater private constructor(scope: CoroutineScope, child: Dat
         return if (address.isPrefixed) {
             val prefix = address.prefixLength
             val addressWithoutPrefix = address.withoutPrefixLength()
-            val x = "${addressWithoutPrefix.toNormalizedString()}#$prefix"
-            println(x)
-            x
+            "${addressWithoutPrefix.toNormalizedString()}#$prefix"
         } else {
             address.toNormalizedString()
         }
@@ -224,9 +222,7 @@ class BasicConnectionGater private constructor(scope: CoroutineScope, child: Dat
                 logger.warn { "Malformed key format for subnet: $address" }
                 return null
             }
-            val x = addressWithoutPrefix.setPrefixLength(prefix)
-            println(x)
-            return x
+            return addressWithoutPrefix.setPrefixLength(prefix)
         } else {
             return IPAddressString(address).address
         }
