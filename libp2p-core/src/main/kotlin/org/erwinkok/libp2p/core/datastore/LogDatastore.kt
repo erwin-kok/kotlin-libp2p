@@ -82,7 +82,7 @@ class LogDatastore(
         return ds.query(query)
     }
 
-    override suspend fun batch(): Result<Batch> {
+    override fun batch(): Result<Batch> {
         logger.info { "$name: batch" }
         if (ds is BatchingFeature) {
             val batch = ds.batch()

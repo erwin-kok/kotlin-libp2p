@@ -18,12 +18,6 @@ import org.erwinkok.result.Result
 import org.erwinkok.result.flatMap
 import java.io.ByteArrayOutputStream
 
-enum class NetworkProtocol {
-    UNKNOWN,
-    UDP,
-    TCP,
-}
-
 class InetMultiaddress private constructor(val hostName: HostName?, val networkProtocol: NetworkProtocol, var multihash: Multihash?, private val components: List<Component>) {
     private val _string: String by lazy { constructString() }
     val bytes: ByteArray by lazy { constructBytes() }
