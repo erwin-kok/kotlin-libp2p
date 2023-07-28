@@ -5,9 +5,6 @@ plugins {
     id("libp2p.publish")
 }
 
-group = "org.erwinkok.libp2p"
-version = "0.1.0-SNAPSHOT"
-
 dependencies {
     implementation(platform(kotlin("bom")))
     implementation(kotlin("stdlib"))

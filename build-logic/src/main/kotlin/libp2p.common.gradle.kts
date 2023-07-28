@@ -12,16 +12,14 @@ plugins {
     idea
     kotlin("jvm")
     kotlin("plugin.serialization")
-//    `jvm-test-suite`
+
     org.jetbrains.kotlinx.kover
     org.jlleitschuh.gradle.ktlint
     com.adarshr.`test-logger`
-//    `kotlinx-atomicfu`
 }
 
-kotlin {
-//    explicitApi()
-}
+group = "org.erwinkok.libp2p"
+version = "0.1.0-SNAPSHOT"
 
 ktlint {
     verbose.set(true)

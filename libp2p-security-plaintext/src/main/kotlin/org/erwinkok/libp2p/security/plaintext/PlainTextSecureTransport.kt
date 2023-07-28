@@ -49,7 +49,7 @@ class PlainTextSecureTransport private constructor(
 
     companion object PlainTextSecureTransportFactory : SecureTransportFactory {
         override val protocolId: ProtocolId
-            get() = ProtocolId.from("/plaintext/2.0.0")
+            get() = ProtocolId.of("/plaintext/2.0.0")
 
         override fun create(scope: CoroutineScope, localIdentity: LocalIdentity): Result<SecureTransport> {
             return Ok(PlainTextSecureTransport(localIdentity))

@@ -14,6 +14,7 @@ import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.builder.PeerstoreConfig
 import org.erwinkok.libp2p.core.network.InetMultiaddress
+import org.erwinkok.libp2p.core.network.address.AddressUtilTest.Companion.assertInetMultiaddressEqual
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.PermanentAddrTTL
 import org.erwinkok.libp2p.core.record.Envelope
 import org.erwinkok.libp2p.core.record.PeerRecord
@@ -496,13 +497,6 @@ internal class AddressStoreTest {
             result.add(address)
         }
         return result
-    }
-
-    private fun assertInetMultiaddressEqual(expected: List<InetMultiaddress>, actual: List<InetMultiaddress>) {
-        assertEquals(expected.size, actual.size, "Expected and actual list sizes differ")
-        for (multiaddress in actual) {
-            assertTrue(expected.contains(multiaddress), "Multiaddress lists are not equal")
-        }
     }
 
     private fun <T> subList(list: List<T>, begin: Int): List<T> {
