@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/erwin-kok/kotlin-libp2p/actions/workflows/ci.yaml/badge.svg)](https://github.com/erwin-kok/kotlin-libp2p/actions/workflows/ci.yaml)
 [![Maven Central](https://img.shields.io/maven-central/v/org.erwinkok.libp2p/kotlin-libp2p)](https://central.sonatype.com/artifact/org.erwinkok.libp2p/kotlin-libp2p)
-[![Kotlin](https://img.shields.io/badge/kotlin-1.8.22-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/kotlin-1.9.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![License](https://img.shields.io/github/license/erwin-kok/kotlin-libp2p.svg)](https://github.com/erwin-kok/kotlin-libp2p/blob/master/LICENSE)
 
 ## Disclaimer
@@ -26,18 +26,20 @@ to each other. For this to work a few challenges have to be solved:
 - How do the nodes know and find each other? In a client-server communication, the client established the connection to
   the server, and the server is known by some pre-defined ip address (or addresses). In a P2P mesh network how to know
   the ip address of the client? Potentially, the client is roaming which means its ip address can change over time.
+**In libp2p this is solved by mDNS, DHT/Kademlia, and more**.
 
 - How can a node directly connect to another node? In client-server communication, the client initiates a connection to
   the server. This is an outbound connection. However, in a P2P connection, a node connects directly to another node,
   which is an inbound connection. Inbound connections are not always possible. Think of security (the router rejects
   inbound connection attempts), but also think of NAT devices (what is the correct ip address? A node might know a
-  different ip address of itself than the outside world is able to connect to).
+  different ip address of itself than the outside world is able to connect to) **In libp2p this is solved by autonat, 
+holepunching, relay-service, and more**.
 
 - Which wire protocol to use? In a client-server network the used protocol is obvious: the server dictates the protocol
   to be used, or else it rejects the connection. A server can easily support the current protocol version while also
   supporting the older version(s) temporarily. A server can also force a client upgrade. In a P2P network this is not
   obvious, because there are several nodes connected to each other. They all could have a different implementation with
-  different capabilities and with different versions.
+  different capabilities and with different versions **In libp2p this is solved by multiformats**.
 
 There already exists some P2P network protocols, but they lacked standardization. Libp2p standardizes they way nodes
 communicate to each other and has a solution for the above-mentioned issues (and more).
@@ -46,11 +48,51 @@ See for an in-depth description of libp2p, please see: https://libp2p.io/
 
 ## Features
 
+- Multiformats. See my other repo: https://github.com/erwin-kok/multiformat
+  - [X] multiaddr
+  - [X] multibase 
+  - [X] multicodec
+  - [X] multihash
+  - [X] multistream-select 
+
+- Crypto 
+  - [X] ED25519
+  - [X] ECDSA
+  - [X] SECp256k1
+  - [X] RSA
+
+- Transports
+  - [X] Tcp
+  - [ ] Quic (planned) 
+
+- Muxers
+  - [X] Mplex
+  - [ ] Yamux (planned)
+  - [ ] Quic (planned)
+
+- Security
+  - [X] Noise
+  - [ ] Tls (planned)
+  - [ ] Quic (planned)
+
+- Protocols
+  - [ ] Identify (planned)
+  - [ ] Ping (planned)
+  - [ ] DHT/Kademlia (planned)
+  - [ ] pubsub (planned)
+
+- Peer discovery
+  - [ ] mDNS (planned)
+  - [ ] DHT/Kademlia (planned)
+
+- Datastore
+  - [X] RocksDB 
+
 ## Getting started
 
 ## Contact
 
-If you want to contact me, please write an e-mail to: [erwin-kok@gmx.com](mailto:erwin-kok@gmx.com)
+If you want to contact me, please write an e-mail to: [erwin.kok@protonmail.com](mailto:erwin.kok@protonmail.com)
 
 ## License
 

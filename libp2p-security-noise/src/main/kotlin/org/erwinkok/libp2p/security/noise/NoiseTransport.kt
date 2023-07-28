@@ -42,7 +42,7 @@ class NoiseTransport(
 
     companion object NoiseSecureTransportFactory : SecureTransportFactory {
         override val protocolId: ProtocolId
-            get() = ProtocolId.from("/noise")
+            get() = ProtocolId.of("/noise")
 
         override fun create(scope: CoroutineScope, localIdentity: LocalIdentity): Result<SecureTransport> {
             return Ok(NoiseTransport(scope, localIdentity))

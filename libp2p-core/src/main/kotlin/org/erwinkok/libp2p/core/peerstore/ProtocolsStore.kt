@@ -86,7 +86,7 @@ class ProtocolsStore private constructor(
                 .map { protocolMap -> protocolMap.firstOrNull { protocols.contains(it) } }
                 .flatMap {
                     return if (it == null) {
-                        logger.warn { "Peer $peerId does not support any of the requested protocols [${protocols.joinToString(", ")}]" }
+                        logger.info { "Peer $peerId does not support any of the requested protocols [${protocols.joinToString(", ")}]" }
                         Ok(ProtocolId.Null)
                     } else {
                         Ok(it)
@@ -118,7 +118,7 @@ class ProtocolsStore private constructor(
         val dbKey = peerToKey(peerId)
         return datastore.get(dbKey)
             .map { Cbor.decodeFromByteArray<Set<String>>(serializer(), it) }
-            .map { set -> set.map { ProtocolId.from(it) }.toSet() }
+            .map { set -> set.map { ProtocolId.of(it) }.toSet() }
     }
 
     private suspend fun put(peerId: PeerId, value: Set<ProtocolId>): Result<Unit> {

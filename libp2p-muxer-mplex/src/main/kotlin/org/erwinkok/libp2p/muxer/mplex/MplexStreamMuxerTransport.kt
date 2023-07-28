@@ -20,7 +20,7 @@ class MplexStreamMuxerTransport private constructor(
 
     companion object MplexStreamMuxerTransportFactory : StreamMuxerTransportFactory {
         override val protocolId: ProtocolId
-            get() = ProtocolId.from("/mplex/6.7.0")
+            get() = ProtocolId.of("/mplex/6.7.0")
 
         override fun create(scope: CoroutineScope): Result<StreamMuxerTransport> {
             return Ok(MplexStreamMuxerTransport(scope))

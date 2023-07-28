@@ -2,11 +2,11 @@
 package org.erwinkok.libp2p.core.network.address
 
 import org.erwinkok.libp2p.core.network.InetMultiaddress
+import org.erwinkok.libp2p.core.network.address.AddressUtilTest.Companion.assertInetMultiaddressEqual
 import org.erwinkok.libp2p.core.network.address.NetworkInterface.resolveUnspecifiedAddress
 import org.erwinkok.libp2p.core.network.address.NetworkInterface.resolveUnspecifiedAddresses
 import org.erwinkok.result.assertErrorResult
 import org.erwinkok.result.expectNoErrors
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
 internal class NetworkInterfaceTest {
@@ -49,12 +49,5 @@ internal class NetworkInterfaceTest {
 
         assertErrorResult("Could not resolve specified addresses") { resolveUnspecifiedAddresses(listOf(ip4u), listOf(ip6i)) }
         assertErrorResult("Could not resolve specified addresses") { resolveUnspecifiedAddresses(listOf(ip6u), listOf(ip4i)) }
-    }
-
-    private fun assertInetMultiaddressEqual(expected: List<InetMultiaddress>, actual: List<InetMultiaddress>) {
-        Assertions.assertEquals(expected.size, actual.size, "Expected and actual list sizes differ")
-        for (multiaddress in actual) {
-            Assertions.assertTrue(expected.contains(multiaddress), "Multiaddress lists are not equal")
-        }
     }
 }

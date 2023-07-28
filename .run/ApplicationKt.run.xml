@@ -1,11 +1,7 @@
-<!--
-  ~ Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
-  -->
-
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="ApplicationKt" type="JetRunConfigurationType" nameIsGenerated="true">
     <option name="MAIN_CLASS_NAME" value="org.erwinkok.libp2p.app.ApplicationKt" />
-    <module name="libp2p.app.main" />
+    <module name="kotlin-libp2p.app.main" />
     <shortenClasspath name="NONE" />
     <extension name="net.ashald.envfile">
       <option name="IS_ENABLED" value="false" />
@@ -14,7 +10,7 @@
       <option name="IS_IGNORE_MISSING_FILES" value="false" />
       <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
       <ENTRIES>
-        <ENTRY IS_ENABLED="true" PARSER="runconfig" />
+        <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
       </ENTRIES>
     </extension>
     <method v="2">

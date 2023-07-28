@@ -5,4 +5,7 @@ enum class NetworkProtocol {
     UNKNOWN,
     UDP,
     TCP,
+    WEBTRANSPORT,
+    QUIC,
+    QUIC_V1,
 }

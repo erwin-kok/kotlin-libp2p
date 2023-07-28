@@ -6,6 +6,7 @@ import inet.ipaddr.HostName
 import inet.ipaddr.IPAddressString
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.SocketAddress
+import mu.KotlinLogging
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.multiformat.multiaddress.Multiaddress
 import org.erwinkok.multiformat.multiaddress.Protocol
@@ -17,6 +18,8 @@ import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.flatMap
 import java.io.ByteArrayOutputStream
+
+private val logger = KotlinLogging.logger {}
 
 class InetMultiaddress private constructor(val hostName: HostName?, val networkProtocol: NetworkProtocol, var multihash: Multihash?, private val components: List<Component>) {
     private val _string: String by lazy { constructString() }
@@ -40,6 +43,15 @@ class InetMultiaddress private constructor(val hostName: HostName?, val networkP
             val hn = hostName ?: return false
             return hn.isValid && hn.port != null && hn.port > 0 && networkProtocol == NetworkProtocol.TCP
         }
+
+    val isIpv4: Boolean
+        get() = hostName?.asAddress()?.isIPv4 ?: false
+
+    val isIpv6: Boolean
+        get() = hostName?.asAddress()?.isIPv6 ?: false
+
+    val isRelay: Boolean
+        get() = false
 
     val isNotEmpty: Boolean
         get() = bytes.isNotEmpty()
@@ -103,10 +115,34 @@ class InetMultiaddress private constructor(val hostName: HostName?, val networkP
             }
             if (hostName.port != null) {
                 val portBytes = byteArrayOf((hostName.port shr 8).toByte(), hostName.port.toByte())
-                if (networkProtocol == NetworkProtocol.TCP) {
-                    Protocol.writeTo(outputStream, Protocol.TCP, portBytes)
-                } else if (networkProtocol == NetworkProtocol.UDP) {
-                    Protocol.writeTo(outputStream, Protocol.UDP, portBytes)
+                when (networkProtocol) {
+                    NetworkProtocol.TCP -> {
+                        Protocol.writeTo(outputStream, Protocol.TCP, portBytes)
+                    }
+
+                    NetworkProtocol.UDP -> {
+                        Protocol.writeTo(outputStream, Protocol.UDP, portBytes)
+                    }
+
+                    NetworkProtocol.QUIC -> {
+                        Protocol.writeTo(outputStream, Protocol.UDP, portBytes)
+                        Protocol.writeTo(outputStream, Protocol.QUIC, byteArrayOf())
+                    }
+
+                    NetworkProtocol.QUIC_V1 -> {
+                        Protocol.writeTo(outputStream, Protocol.UDP, portBytes)
+                        Protocol.writeTo(outputStream, Protocol.QUIC_V1, byteArrayOf())
+                    }
+
+                    NetworkProtocol.WEBTRANSPORT -> {
+                        Protocol.writeTo(outputStream, Protocol.UDP, portBytes)
+                        Protocol.writeTo(outputStream, Protocol.QUIC_V1, byteArrayOf())
+                        Protocol.writeTo(outputStream, Protocol.WEBTRANSPORT, byteArrayOf())
+                    }
+
+                    NetworkProtocol.UNKNOWN -> {
+                        logger.error { "Unknown NetworkProtocol in InetMultiaddress" }
+                    }
                 }
             }
         }
@@ -140,10 +176,34 @@ class InetMultiaddress private constructor(val hostName: HostName?, val networkP
                 }
             }
             if (hostName.port != null) {
-                if (networkProtocol == NetworkProtocol.TCP) {
-                    Protocol.writeTo(stringBuilder, Protocol.TCP, hostName.port.toString())
-                } else if (networkProtocol == NetworkProtocol.UDP) {
-                    Protocol.writeTo(stringBuilder, Protocol.UDP, hostName.port.toString())
+                when (networkProtocol) {
+                    NetworkProtocol.TCP -> {
+                        Protocol.writeTo(stringBuilder, Protocol.TCP, hostName.port.toString())
+                    }
+
+                    NetworkProtocol.UDP -> {
+                        Protocol.writeTo(stringBuilder, Protocol.UDP, hostName.port.toString())
+                    }
+
+                    NetworkProtocol.QUIC -> {
+                        Protocol.writeTo(stringBuilder, Protocol.UDP, hostName.port.toString())
+                        Protocol.writeTo(stringBuilder, Protocol.QUIC, "")
+                    }
+
+                    NetworkProtocol.QUIC_V1 -> {
+                        Protocol.writeTo(stringBuilder, Protocol.UDP, hostName.port.toString())
+                        Protocol.writeTo(stringBuilder, Protocol.QUIC_V1, "")
+                    }
+
+                    NetworkProtocol.WEBTRANSPORT -> {
+                        Protocol.writeTo(stringBuilder, Protocol.UDP, hostName.port.toString())
+                        Protocol.writeTo(stringBuilder, Protocol.QUIC_V1, "")
+                        Protocol.writeTo(stringBuilder, Protocol.WEBTRANSPORT, "")
+                    }
+
+                    NetworkProtocol.UNKNOWN -> {
+                        logger.error { "Unknown NetworkProtocol in InetMultiaddress" }
+                    }
                 }
             }
         }
@@ -267,6 +327,30 @@ class InetMultiaddress private constructor(val hostName: HostName?, val networkP
                             0
                         }
                         networkProtocol = NetworkProtocol.UDP
+                    }
+
+                    Protocol.QUIC -> {
+                        if (networkProtocol == NetworkProtocol.UDP) {
+                            networkProtocol = NetworkProtocol.QUIC
+                        } else {
+                            restComponents.add(component)
+                        }
+                    }
+
+                    Protocol.QUIC_V1 -> {
+                        if (networkProtocol == NetworkProtocol.UDP) {
+                            networkProtocol = NetworkProtocol.QUIC_V1
+                        } else {
+                            restComponents.add(component)
+                        }
+                    }
+
+                    Protocol.WEBTRANSPORT -> {
+                        if (networkProtocol == NetworkProtocol.QUIC_V1) {
+                            networkProtocol = NetworkProtocol.WEBTRANSPORT
+                        } else {
+                            restComponents.add(component)
+                        }
                     }
 
                     else -> {

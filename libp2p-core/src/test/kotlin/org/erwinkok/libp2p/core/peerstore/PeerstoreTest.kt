@@ -13,12 +13,12 @@ import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.builder.PeerstoreConfig
 import org.erwinkok.libp2p.core.network.InetMultiaddress
+import org.erwinkok.libp2p.core.network.address.AddressUtilTest.Companion.assertInetMultiaddressEqual
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.PermanentAddrTTL
 import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.coAssertErrorResult
 import org.erwinkok.result.expectNoErrors
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.hours
@@ -105,36 +105,36 @@ internal class PeerstoreTest {
         val memoryDatastore = MapDatastore(this)
         val peerstore = Peerstore.create(this, memoryDatastore, PeerstoreConfig()).expectNoErrors()
         val peerId = randomPeerId()
-        val protos1 = setOf(ProtocolId.from("a"), ProtocolId.from("b"), ProtocolId.from("c"), ProtocolId.from("d"))
+        val protos1 = setOf(ProtocolId.of("a"), ProtocolId.of("b"), ProtocolId.of("c"), ProtocolId.of("d"))
         peerstore.addProtocols(peerId, protos1).expectNoErrors()
         val actualProtos = peerstore.getProtocols(peerId).expectNoErrors()
         assertEquals(protos1, actualProtos)
 
-        val supported1 = peerstore.supportsProtocols(peerId, setOf(ProtocolId.from("q"), ProtocolId.from("w"), ProtocolId.from("a"), ProtocolId.from("y"), ProtocolId.from("b"))).expectNoErrors()
-        assertEquals(setOf(ProtocolId.from("a"), ProtocolId.from("b")), supported1)
+        val supported1 = peerstore.supportsProtocols(peerId, setOf(ProtocolId.of("q"), ProtocolId.of("w"), ProtocolId.of("a"), ProtocolId.of("y"), ProtocolId.of("b"))).expectNoErrors()
+        assertEquals(setOf(ProtocolId.of("a"), ProtocolId.of("b")), supported1)
 
-        val b1 = peerstore.firstSupportedProtocol(peerId, setOf(ProtocolId.from("q"), ProtocolId.from("w"), ProtocolId.from("a"), ProtocolId.from("y"), ProtocolId.from("b"))).expectNoErrors()
-        assertEquals(ProtocolId.from("a"), b1)
+        val b1 = peerstore.firstSupportedProtocol(peerId, setOf(ProtocolId.of("q"), ProtocolId.of("w"), ProtocolId.of("a"), ProtocolId.of("y"), ProtocolId.of("b"))).expectNoErrors()
+        assertEquals(ProtocolId.of("a"), b1)
 
-        val b2 = peerstore.firstSupportedProtocol(peerId, setOf(ProtocolId.from("q"), ProtocolId.from("x"), ProtocolId.from("z"))).expectNoErrors()
+        val b2 = peerstore.firstSupportedProtocol(peerId, setOf(ProtocolId.of("q"), ProtocolId.of("x"), ProtocolId.of("z"))).expectNoErrors()
         assertEquals(ProtocolId.Null, b2)
 
-        val b3 = peerstore.firstSupportedProtocol(peerId, setOf(ProtocolId.from("a"))).expectNoErrors()
-        assertEquals(ProtocolId.from("a"), b3)
+        val b3 = peerstore.firstSupportedProtocol(peerId, setOf(ProtocolId.of("a"))).expectNoErrors()
+        assertEquals(ProtocolId.of("a"), b3)
 
-        val protos2 = setOf(ProtocolId.from("other"), ProtocolId.from("yet another"), ProtocolId.from("one more"))
+        val protos2 = setOf(ProtocolId.of("other"), ProtocolId.of("yet another"), ProtocolId.of("one more"))
         peerstore.setProtocols(peerId, protos2).expectNoErrors()
 
-        val supported2 = peerstore.supportsProtocols(peerId, setOf(ProtocolId.from("q"), ProtocolId.from("w"), ProtocolId.from("a"), ProtocolId.from("y"), ProtocolId.from("b"))).expectNoErrors()
+        val supported2 = peerstore.supportsProtocols(peerId, setOf(ProtocolId.of("q"), ProtocolId.of("w"), ProtocolId.of("a"), ProtocolId.of("y"), ProtocolId.of("b"))).expectNoErrors()
         assertEquals(setOf<ProtocolId>(), supported2)
 
         val supported3 = peerstore.getProtocols(peerId).expectNoErrors()
         assertEquals(protos2, supported3)
 
-        peerstore.removeProtocols(peerId, setOf(ProtocolId.from("yet another")))
+        peerstore.removeProtocols(peerId, setOf(ProtocolId.of("yet another")))
 
         val supported4 = peerstore.getProtocols(peerId).expectNoErrors()
-        assertEquals(setOf(ProtocolId.from("other"), ProtocolId.from("one more")), supported4)
+        assertEquals(setOf(ProtocolId.of("other"), ProtocolId.of("one more")), supported4)
 
         peerstore.close()
         memoryDatastore.close()
@@ -145,7 +145,7 @@ internal class PeerstoreTest {
         val memoryDatastore = MapDatastore(this)
         val peerstore = Peerstore.create(this, memoryDatastore, PeerstoreConfig()).expectNoErrors()
         val peerId = randomPeerId()
-        val protos = setOf(ProtocolId.from("a"), ProtocolId.from("b"))
+        val protos = setOf(ProtocolId.of("a"), ProtocolId.of("b"))
         peerstore.setProtocols(peerId, protos).expectNoErrors()
         val actualProtos1 = peerstore.getProtocols(peerId).expectNoErrors()
         assertEquals(protos, actualProtos1)
@@ -229,10 +229,10 @@ internal class PeerstoreTest {
         peerstoreConfig.maxProtocols = 10
         val peerstore = Peerstore.create(this, memoryDatastore, peerstoreConfig).expectNoErrors()
         val peerId = randomPeerId()
-        val protocols = (0 until 10).map { ProtocolId.from("Protocol$it") }.toMutableSet()
+        val protocols = (0 until 10).map { ProtocolId.of("Protocol$it") }.toMutableSet()
 
         peerstore.setProtocols(peerId, protocols).expectNoErrors()
-        protocols.add(ProtocolId.from("proto"))
+        protocols.add(ProtocolId.of("proto"))
         coAssertErrorResult("too many protocols") { peerstore.setProtocols(peerId, protocols) }
 
         val list = protocols.toList()
@@ -240,7 +240,7 @@ internal class PeerstoreTest {
         val p2 = list.subList(5, 10).toSet()
         peerstore.setProtocols(peerId, p1).expectNoErrors()
         peerstore.addProtocols(peerId, p2).expectNoErrors()
-        coAssertErrorResult("too many protocols") { peerstore.addProtocols(peerId, setOf(ProtocolId.from("proto"))) }
+        coAssertErrorResult("too many protocols") { peerstore.addProtocols(peerId, setOf(ProtocolId.of("proto"))) }
 
         peerstore.close()
         memoryDatastore.close()
@@ -257,12 +257,5 @@ internal class PeerstoreTest {
             result.add(address)
         }
         return result
-    }
-
-    private fun assertInetMultiaddressEqual(expected: List<InetMultiaddress>, actual: List<InetMultiaddress>) {
-        assertEquals(expected.size, actual.size, "Expected and actual list sizes differ")
-        for (multiaddress in actual) {
-            assertTrue(expected.contains(multiaddress), "Multiaddress lists are not equal")
-        }
     }
 }
