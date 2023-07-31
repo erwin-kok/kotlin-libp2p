@@ -76,19 +76,12 @@ class SwarmDialer(
                 resolvedByTransport.add(address)
             }
         }
-        val resolved = resolveAddresses(peerId, resolvedByTransport)
-            .getOrElse { return Err(it) }
-        val goodAddresses = IpUtil.unique(filterKnownUndiables(peerId, resolved))
+        val goodAddresses = IpUtil.unique(filterKnownUndiables(peerId, resolvedByTransport))
         if (goodAddresses.isEmpty()) {
             return Err("No good addresses for peer: $peerId")
         }
         peerstore.addAddresses(peerId, goodAddresses, TempAddrTTL)
         return Ok(goodAddresses)
-    }
-
-    private suspend fun resolveAddresses(peerId: PeerId, addresses: List<InetMultiaddress>): Result<List<InetMultiaddress>> {
-        // TODO
-        return Ok(addresses)
     }
 
     private fun canDial(address: InetMultiaddress): Boolean {
@@ -103,26 +96,14 @@ class SwarmDialer(
     private fun filterKnownUndiables(peerId: PeerId, addresses: List<InetMultiaddress>): List<InetMultiaddress> {
         val ourAddresses = swarm.interfaceListenAddresses().getOr(listOf())
         val diableAddresses = AddressUtil.filterAddresses(addresses, ::canDial)
-        val lowPriorityAddresses = filterLowPriorityAddresses(diableAddresses)
-        val nonBlackHoledAddresses = filterAddresses(lowPriorityAddresses)
         return AddressUtil.filterAddresses(
-            nonBlackHoledAddresses,
+            diableAddresses,
             listOf(
                 { address -> ourAddresses.none { it == address } },
                 { address -> !IpUtil.isIp6LinkLocal(address) },
                 { address -> connectionGater == null || connectionGater.interceptAddressDial(peerId, address) },
             ),
         )
-    }
-
-    private fun filterAddresses(addresses: List<InetMultiaddress>): List<InetMultiaddress> {
-        // TODO
-        return addresses
-    }
-
-    private fun filterLowPriorityAddresses(addresses: List<InetMultiaddress>): List<InetMultiaddress> {
-        // TODO
-        return addresses
     }
 
     override fun close() {

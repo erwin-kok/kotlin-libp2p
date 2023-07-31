@@ -6,13 +6,11 @@ import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.builder.SwarmConfig
-import org.erwinkok.libp2p.core.network.AddressDelay
 import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
@@ -163,26 +161,6 @@ class Swarm private constructor(
 
     internal fun getOrCreatePeer(peerId: PeerId): NetworkPeer {
         return peers.computeIfAbsent(peerId) { NetworkPeer(scope, peerId, this, resourceManager, multistreamMuxer) }
-    }
-
-    //
-    //
-    //
-
-    internal suspend fun bestAcceptableConnectionToPeer(peerId: PeerId): Result<SwarmConnection>? {
-        return null
-    }
-
-    internal suspend fun addressesForDial(peerId: PeerId): Result<List<InetMultiaddress>> {
-        return swarmDialer.addressesForDial(peerId)
-    }
-
-    internal suspend fun dialRanker(addresses: List<InetMultiaddress>): List<AddressDelay> {
-        return dialRanker(addresses)
-    }
-
-    internal suspend fun dialNextAddress(peerId: PeerId, address: InetMultiaddress, responseChannel: Channel<DialResponse>): Result<Unit> {
-        TODO("Not yet implemented")
     }
 
     internal fun addConnection(transportConnection: TransportConnection, direction: Direction): Result<SwarmConnection> {

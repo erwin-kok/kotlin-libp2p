@@ -22,7 +22,7 @@ interface Host : AwaitableClosable {
     val eventBus: EventBus
 
     fun addresses(): List<InetMultiaddress>
-    suspend fun connect(peerInfo: AddressInfo): Result<Unit>
+    suspend fun connect(addressInfo: AddressInfo): Result<Unit>
     fun setStreamHandler(protocolId: ProtocolId, handler: StreamHandler)
     fun setStreamHandlerMatch(protocolId: ProtocolId, matcher: (ProtocolId) -> Boolean, handler: StreamHandler)
     fun removeStreamHandler(protocolId: ProtocolId)

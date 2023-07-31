@@ -74,7 +74,7 @@ class Upgrader(
             connection.close()
             return Err("Gater rejected connection with peer ${secureMuxerInfo.secureConnection.remoteIdentity.peerId} and address ${connection.remoteAddress} with direction $direction")
         }
-        if (scope.peerScope() == null) {
+        if (scope.peerScope == null) {
             scope.setPeer(secureMuxerInfo.secureConnection.remoteIdentity.peerId)
                 .getOrElse {
                     val message = "resource manager blocked connection for peer. peer=${secureMuxerInfo.secureConnection.remoteIdentity.peerId}, address=${connection.remoteAddress}, direction $direction, error=${errorMessage(it)}"
@@ -84,7 +84,7 @@ class Upgrader(
                 }
         }
         val initiator = secureMuxerInfo.direction == Direction.DirOutbound
-        val muxedConnection = setupMuxer(secureMuxerInfo.secureConnection, initiator, scope.peerScope())
+        val muxedConnection = setupMuxer(secureMuxerInfo.secureConnection, initiator, scope.peerScope)
             .getOrElse {
                 secureMuxerInfo.secureConnection.close()
                 return Err("failed to negotiate stream multiplexer: ${errorMessage(it)}")

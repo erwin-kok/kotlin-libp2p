@@ -19,7 +19,7 @@ plugins {
 }
 
 group = "org.erwinkok.libp2p"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0"
 
 ktlint {
     verbose.set(true)
