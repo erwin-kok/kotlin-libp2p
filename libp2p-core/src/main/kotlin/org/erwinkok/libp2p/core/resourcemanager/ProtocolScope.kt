@@ -5,5 +5,5 @@ package org.erwinkok.libp2p.core.resourcemanager
 import org.erwinkok.multiformat.multistream.ProtocolId
 
 interface ProtocolScope : ResourceScope {
-    fun protocol(): ProtocolId
+    val protocol: ProtocolId
 }

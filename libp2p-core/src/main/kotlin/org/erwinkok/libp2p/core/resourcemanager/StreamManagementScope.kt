@@ -6,8 +6,8 @@ import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.Result
 
 interface StreamManagementScope : StreamScope, ResourceScopeSpan {
+    val peerScope: PeerScope
     fun protocolScope(): ProtocolScope
     fun setProtocol(proto: ProtocolId): Result<Unit>
     fun serviceScope(): ServiceScope
-    fun peerScope(): PeerScope
 }

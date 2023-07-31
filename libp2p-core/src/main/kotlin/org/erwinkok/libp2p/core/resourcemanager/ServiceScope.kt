@@ -3,5 +3,5 @@
 package org.erwinkok.libp2p.core.resourcemanager
 
 interface ServiceScope : ResourceScope {
-    fun name(): String
+    val name: String
 }

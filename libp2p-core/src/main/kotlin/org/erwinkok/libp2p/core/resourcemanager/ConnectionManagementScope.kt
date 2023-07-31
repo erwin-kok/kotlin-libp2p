@@ -6,6 +6,6 @@ import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.result.Result
 
 interface ConnectionManagementScope : ResourceScopeSpan, ConnectionScope {
-    fun peerScope(): PeerScope
+    val peerScope: PeerScope
     fun setPeer(peerId: PeerId): Result<Unit>
 }
