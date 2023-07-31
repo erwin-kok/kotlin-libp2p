@@ -37,7 +37,7 @@ publishing {
                     developer {
                         id.set("erwin-kok")
                         name.set("Erwin Kok")
-                        email.set("erwin.kok@protonmail.com")
+                        email.set("erwin-kok@gmx.com")
                         url.set("https://github.com/erwin-kok/")
                         roles.set(listOf("owner", "developer"))
                     }
