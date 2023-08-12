@@ -77,7 +77,7 @@ See for an in-depth description of libp2p, please see: https://libp2p.io/
 
 - Protocols
     - [ ] Identify (planned)
-    - [ ] Ping (planned)
+    - [X] Ping
     - [ ] DHT/Kademlia (planned)
     - [ ] pubsub (planned)
 
