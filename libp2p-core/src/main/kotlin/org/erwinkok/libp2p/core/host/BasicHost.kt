@@ -8,12 +8,14 @@ import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
 import org.erwinkok.libp2p.core.event.EvtLocalProtocolsUpdated
+import org.erwinkok.libp2p.core.host.builder.HostConfig
 import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
 import org.erwinkok.libp2p.core.network.Stream
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.TempAddrTTL
+import org.erwinkok.libp2p.core.protocol.ping.PingService
 import org.erwinkok.libp2p.core.record.AddressInfo
 import org.erwinkok.multiformat.multistream.MultistreamMuxer
 import org.erwinkok.multiformat.multistream.ProtocolId
@@ -31,6 +33,7 @@ private val logger = KotlinLogging.logger {}
 class BasicHost(
     val scope: CoroutineScope,
     val localIdentity: LocalIdentity,
+    val hostConfig: HostConfig,
     override val network: Network,
     override val peerstore: Peerstore,
     override val multistreamMuxer: MultistreamMuxer<Stream>,
@@ -38,11 +41,21 @@ class BasicHost(
 ) : AwaitableClosable, Host {
     private val _context = SupervisorJob(scope.coroutineContext[Job])
 
+    val pingService: PingService?
+
     override val jobContext: Job
         get() = _context
 
     override val id: PeerId
         get() = localIdentity.peerId
+
+    init {
+        pingService = if (hostConfig.enablePing) {
+            PingService(scope, this)
+        } else {
+            null
+        }
+    }
 
     override fun setStreamHandler(protocolId: ProtocolId, handler: StreamHandler) {
         multistreamMuxer.addHandler(protocolId) { protocol, stream ->
@@ -68,8 +81,6 @@ class BasicHost(
     }
 
     override suspend fun newStream(peerId: PeerId, protocols: Set<ProtocolId>): Result<Stream> {
-        connect(AddressInfo.fromPeerId(peerId))
-            .onFailure { return Err(it) }
         val stream = network.newStream(peerId)
             .getOrElse { return Err(it) }
         val preferredProtocol = peerstore.firstSupportedProtocol(peerId, protocols)
@@ -113,8 +124,10 @@ class BasicHost(
     }
 
     override fun close() {
+        pingService?.close()
         eventBus.close()
         peerstore.close()
-        _context.cancel()
+        network.close()
+        _context.complete()
     }
 }

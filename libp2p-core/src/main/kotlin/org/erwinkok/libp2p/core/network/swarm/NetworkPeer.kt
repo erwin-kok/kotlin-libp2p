@@ -85,7 +85,7 @@ class NetworkPeer(
     }
 
     override fun close() {
-        _context.cancel()
+        _context.complete()
     }
 
     private fun isBetterConnection(a: SwarmConnection, b: SwarmConnection): Boolean {

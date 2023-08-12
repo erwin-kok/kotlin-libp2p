@@ -49,6 +49,7 @@ class SwarmConfig {
 
 class HostConfig {
     var insecure = false
+    var enablePing = false
     var localIdentity: LocalIdentity? = null
     val peerstoreConfig = PeerstoreConfig()
     val swarmConfig = SwarmConfig()

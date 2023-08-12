@@ -144,7 +144,7 @@ class Swarm private constructor(
         swarmDialer.close()
         swarmListener.close()
         swarmTransport.close()
-        _context.cancel()
+        _context.complete()
     }
 
     internal fun removeConnection(swarmConnection: SwarmConnection) {

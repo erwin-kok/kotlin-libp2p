@@ -113,7 +113,7 @@ class SwarmListener(
             listeners.forEach { it.value.cancel() }
             listeners.clear()
         }
-        _context.cancel()
+        _context.complete()
     }
 
     private fun startListener(address: InetMultiaddress): Result<Job> {

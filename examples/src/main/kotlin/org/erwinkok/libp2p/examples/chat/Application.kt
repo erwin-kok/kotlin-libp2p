@@ -1,13 +1,15 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
-package org.erwinkok.libp2p.app
+package org.erwinkok.libp2p.examples.chat
 
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
+import org.erwinkok.libp2p.core.host.BasicHost
 import org.erwinkok.libp2p.core.host.Host
 import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.builder.host
@@ -25,6 +27,7 @@ import org.erwinkok.result.getOrElse
 import org.erwinkok.result.getOrThrow
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
 
@@ -47,6 +50,7 @@ fun main() {
             }
 
         val hostBuilder = host {
+            enablePing = true
             identity(localIdentity)
             muxers {
                 mplex()
@@ -90,15 +94,29 @@ fun main() {
             chatHandler(it)
         }
 
-        val localAddress = addPeerAddress(host, "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWBazTG3XWMMjZ86tHSt4H1dYUVF7za8EGbUu7SenFxUkC")
-        host.connect(localAddress)
+        val localAddress = addPeerAddress(host, "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWDbJKcVvs9TvW3DWpvCtTbcqjAAthxxC1KSior6mNBb3r")
+
+        val basicHost = host as? BasicHost
+        if (basicHost != null) {
+            val flow = basicHost.pingService?.ping(localAddress.peerId, 5.seconds)
+            if (flow != null) {
+                launch {
+                    flow.collect { pingResult ->
+                        println("Ping RTT: ${pingResult.rtt}")
+                    }
+                }
+            }
+        }
 
         val stream = host.newStream(localAddress.peerId, ProtocolId.of("/chat/1.0.0"))
             .getOrElse {
                 logger.error { "Could not open chat stream with peer: ${errorMessage(it)}" }
+                host.close()
+                host.awaitClosed()
                 return@runBlocking
             }
         chatHandler(stream)
+        stream.close()
 
         host.close()
         host.awaitClosed()
@@ -128,6 +146,9 @@ private suspend fun chatHandler(stream: Stream) {
             val message = String(bytes, 0, size).trim('\n')
             logger.info { message }
             stream.output.writeFully(bytes)
+            if (message == "/quit") {
+                break
+            }
         }
     }
 }

@@ -108,7 +108,7 @@ class SwarmDialer(
 
     override fun close() {
         workers.values.forEach { it.close() }
-        _context.cancel()
+        _context.complete()
     }
 
     private suspend fun getOrCreateDialWorker(peerId: PeerId): Result<DialWorker> {

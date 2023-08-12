@@ -1,6 +1,7 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.peerstore
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -222,40 +223,44 @@ class AddressStore private constructor(
 
     private fun gcPurge() {
         scope.launch(_context + CoroutineName("address-store-gc")) {
-            delay(gcInitialDelay)
-            while (_context.isActive) {
-                logger.info { "Purging AddressBook GC entries..." }
-                CyclicBatch.create(datastore, DefaultOpsPerCyclicBatch)
-                    .onSuccess { batch ->
-                        datastore.query(PurgeStoreQuery)
-                            .onSuccess { queryResult ->
-                                queryResult
-                                    .queryFilterError { logger.error { "Error retrieving key: ${errorMessage(it)}" } }
-                                    .mapNotNull { entry -> entry.value }
-                                    .mapNotNull { bytes ->
-                                        AddressBookRecord.deserialize(addressStreamManager, datastore, bytes)
-                                            .getOrElse {
-                                                logger.error { "Could not convert bytes to AddressBookRecord: ${errorMessage(it)}" }
-                                                null
-                                            }
-                                    }
-                                    .onCompletion { batch.commit() }
-                                    .collect { addressBookRecord ->
-                                        // Its a new and local record, no need to lock
-                                        if (addressBookRecord.clean(now())) {
-                                            addressBookRecord.flush(batch)
-                                            cache.remove(addressBookRecord.peerId)
+            try {
+                delay(gcInitialDelay)
+                while (_context.isActive) {
+                    logger.info { "Purging AddressBook GC entries..." }
+                    CyclicBatch.create(datastore, DefaultOpsPerCyclicBatch)
+                        .onSuccess { batch ->
+                            datastore.query(PurgeStoreQuery)
+                                .onSuccess { queryResult ->
+                                    queryResult
+                                        .queryFilterError { logger.error { "Error retrieving key: ${errorMessage(it)}" } }
+                                        .mapNotNull { entry -> entry.value }
+                                        .mapNotNull { bytes ->
+                                            AddressBookRecord.deserialize(addressStreamManager, datastore, bytes)
+                                                .getOrElse {
+                                                    logger.error { "Could not convert bytes to AddressBookRecord: ${errorMessage(it)}" }
+                                                    null
+                                                }
                                         }
-                                    }
-                            }
-                            .onFailure {
-                                logger.warn { "Could not query datastore in AddressStore GC" }
-                            }
-                    }
-                    .onFailure {
-                        logger.warn { "Failed to create cyclic batch" }
-                    }
-                delay(gcPurgeInterval)
+                                        .onCompletion { batch.commit() }
+                                        .collect { addressBookRecord ->
+                                            // Its a new and local record, no need to lock
+                                            if (addressBookRecord.clean(now())) {
+                                                addressBookRecord.flush(batch)
+                                                cache.remove(addressBookRecord.peerId)
+                                            }
+                                        }
+                                }
+                                .onFailure {
+                                    logger.warn { "Could not query datastore in AddressStore GC" }
+                                }
+                        }
+                        .onFailure {
+                            logger.warn { "Failed to create cyclic batch" }
+                        }
+                    delay(gcPurgeInterval)
+                }
+            } catch (e: CancellationException) {
+                // Do nothing, just return...
             }
         }
     }
