@@ -1,20 +1,26 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
+@file:OptIn(DelicateCoroutinesApi::class)
 
 package org.erwinkok.libp2p.core.protocol.ping
 
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.writeFully
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
-import org.erwinkok.libp2p.core.base.AwaitableClosableBase
+import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.host.BasicHost
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Stream
@@ -37,16 +43,21 @@ import kotlin.time.Duration.Companion.seconds
 private val logger = KotlinLogging.logger {}
 
 class PingService(
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val host: BasicHost,
-) : AwaitableClosableBase(scope) {
+) : AwaitableClosable {
+    private val _context = Job(scope.coroutineContext[Job])
+
+    override val jobContext: Job
+        get() = _context
+
     init {
         host.setStreamHandler(PingId) { stream ->
             pingHandler(stream)
         }
     }
 
-    private suspend fun pingHandler(stream: Stream) = withContext(context) {
+    private suspend fun pingHandler(stream: Stream) = withContext(_context) {
         stream.streamScope.setService(ServiceName)
             .onFailure {
                 logger.debug { "error attaching stream to ping service: ${errorMessage(it)}" }
@@ -83,22 +94,22 @@ class PingService(
         val error: Error? = null,
     )
 
-    fun ping(peerId: PeerId, delay: Duration): Flow<PingResult> {
-        return channelFlow {
-            val stream = host.newStream(peerId, PingId)
-                .getOrElse {
-                    send(PingResult(error = it))
-                    return@channelFlow
-                }
-            stream.streamScope.setService(ServiceName)
-                .getOrElse {
-                    logger.debug { "error attaching stream to ping service: ${errorMessage(it)}" }
-                    stream.reset()
-                    send(PingResult(error = it))
-                    return@channelFlow
-                }
-            launch("ping-service-$peerId") {
-                while (isActive) {
+    fun ping(peerId: PeerId, delay: Duration): Flow<PingResult> = channelFlow {
+        val stream = host.newStream(peerId, PingId)
+            .getOrElse {
+                send(PingResult(error = it))
+                return@channelFlow
+            }
+        stream.streamScope.setService(ServiceName)
+            .getOrElse {
+                logger.debug { "error attaching stream to ping service: ${errorMessage(it)}" }
+                stream.reset()
+                send(PingResult(error = it))
+                return@channelFlow
+            }
+        launch(_context + CoroutineName("ping-service-$peerId")) {
+            try {
+                while (_context.isActive && !isClosedForSend) {
                     ping(stream)
                         .onSuccess {
                             host.peerstore.recordLatency(peerId, it)
@@ -109,9 +120,16 @@ class PingService(
                         }
                     delay(delay)
                 }
+            } catch (e: CancellationException) {
+                // Do nothing...
             }
-            awaitClose()
+            close()
         }
+        awaitClose()
+    }
+
+    override fun close() {
+        _context.cancel()
     }
 
     private suspend fun ping(stream: Stream): Result<Long> {
