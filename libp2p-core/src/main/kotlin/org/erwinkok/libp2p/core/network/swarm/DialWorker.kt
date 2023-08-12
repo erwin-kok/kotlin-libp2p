@@ -10,6 +10,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
@@ -74,6 +75,8 @@ internal class DialWorker(
                 }
             } catch (e: CancellationException) {
                 // Do nothing...
+            } catch (e: ClosedReceiveChannelException) {
+                // Do nothing...
             } catch (e: Exception) {
                 logger.warn { "Unexpected error occurred in swarm-dialer-$peerId: ${errorMessage(e)}" }
                 throw e
@@ -85,6 +88,13 @@ internal class DialWorker(
         val dialRequest = DialRequest()
         requestChannel.send(dialRequest)
         return dialRequest.getResponse()
+    }
+
+    override fun close() {
+        requestChannel.close()
+        responseChannel.close()
+        queue.close()
+        _context.complete()
     }
 
     private suspend fun handleRequest(dialRequest: DialRequest) {
@@ -191,9 +201,5 @@ internal class DialWorker(
                         },
                     )
             }
-    }
-
-    override fun close() {
-        _context.cancel()
     }
 }

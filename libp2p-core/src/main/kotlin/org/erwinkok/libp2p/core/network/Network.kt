@@ -2,13 +2,14 @@
 
 package org.erwinkok.libp2p.core.network
 
+import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.transport.Transport
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.resourcemanager.ResourceManager
 import org.erwinkok.result.Result
 
-interface Network {
+interface Network : AwaitableClosable {
     val peerstore: Peerstore
     val localPeerId: PeerId
     val resourceManager: ResourceManager?

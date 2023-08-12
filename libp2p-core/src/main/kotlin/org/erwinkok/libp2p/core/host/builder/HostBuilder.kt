@@ -49,9 +49,11 @@ annotation class HostDsl
 
 @HostDsl
 class HostBuilder {
-    val reflections = Reflections("org.erwinkok")
+    private val reflections = Reflections("org.erwinkok")
     val errors = CombinedError()
     val config = HostConfig()
+
+    var enablePing by config::enablePing
 
     @HostDsl
     fun identity(localIdentity: LocalIdentity) {
@@ -166,6 +168,7 @@ class HostBuilder {
         val host = BasicHost(
             coroutineScope,
             localIdentity,
+            config,
             swarm,
             peerstore,
             multistreamMuxer,

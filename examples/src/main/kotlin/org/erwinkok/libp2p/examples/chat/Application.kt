@@ -1,5 +1,5 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
-package org.erwinkok.libp2p.app
+package org.erwinkok.libp2p.examples.chat
 
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -90,15 +90,16 @@ fun main() {
             chatHandler(it)
         }
 
-        val localAddress = addPeerAddress(host, "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWBazTG3XWMMjZ86tHSt4H1dYUVF7za8EGbUu7SenFxUkC")
-        host.connect(localAddress)
-
+        val localAddress = addPeerAddress(host, "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWRCFBtg6AGX9hLFvhtaUzDQGVJ6SK7fQ6VakuAEH6Bn1v")
         val stream = host.newStream(localAddress.peerId, ProtocolId.of("/chat/1.0.0"))
             .getOrElse {
                 logger.error { "Could not open chat stream with peer: ${errorMessage(it)}" }
+                host.close()
+                host.awaitClosed()
                 return@runBlocking
             }
         chatHandler(stream)
+        stream.close()
 
         host.close()
         host.awaitClosed()
@@ -128,6 +129,9 @@ private suspend fun chatHandler(stream: Stream) {
             val message = String(bytes, 0, size).trim('\n')
             logger.info { message }
             stream.output.writeFully(bytes)
+            if (message == "/quit") {
+                break
+            }
         }
     }
 }

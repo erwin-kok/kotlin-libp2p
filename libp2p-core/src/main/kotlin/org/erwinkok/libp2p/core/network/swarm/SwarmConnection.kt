@@ -121,7 +121,7 @@ class SwarmConnection(
         swarm.removeConnection(this)
         transportConnection.close()
         streams.forEach { it.reset() }
-        _context.cancel()
+        _context.complete()
     }
 
     private fun addStream(muxedStream: MuxedStream, direction: Direction, streamScope: StreamManagementScope): Result<Stream> {

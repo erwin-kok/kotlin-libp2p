@@ -41,13 +41,6 @@ import java.nio.ByteBuffer
 
 private val logger = KotlinLogging.logger {}
 
-enum class State {
-    FULL,
-    READING,
-    WRITING,
-    CLOSED,
-}
-
 class MplexMuxedStream(
     private val scope: CoroutineScope,
     private val mplexMultiplexer: MplexStreamMuxerConnection,
