@@ -13,6 +13,7 @@ testlogger-plugin = "3.2.0"
 caffeine = "3.1.7"
 mockk = "1.13.5"
 ipaddress = "5.4.0"
+jedis = "4.4.3"
 junit-jupiter = "5.10.0"
 kerby-asn1 = "2.0.3"
 klaxon = "5.6"
@@ -45,6 +46,7 @@ buildscript-testlogger = { module = "com.adarshr:gradle-test-logger-plugin", ver
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 io-mockk-mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 ipaddress = { module = "com.github.seancfoley:ipaddress", version.ref = "ipaddress" }
+jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
 junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit-jupiter" }

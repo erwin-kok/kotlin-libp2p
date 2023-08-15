@@ -18,6 +18,8 @@ import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.flatMap
 import java.io.ByteArrayOutputStream
+import java.net.InetAddress
+import java.net.UnknownHostException
 
 private val logger = KotlinLogging.logger {}
 
@@ -239,7 +241,12 @@ class InetMultiaddress private constructor(val hostName: HostName?, val networkP
 
         fun fromSocketAndProtocol(socketAddress: SocketAddress, protocol: NetworkProtocol): Result<InetMultiaddress> {
             if (socketAddress is InetSocketAddress) {
-                val hostName = HostName(java.net.InetSocketAddress(socketAddress.hostname, socketAddress.port))
+                val hostName = try {
+                    val address = InetAddress.getByName(socketAddress.hostname)
+                    HostName(java.net.InetSocketAddress(address, socketAddress.port))
+                } catch (e: UnknownHostException) {
+                    HostName(java.net.InetSocketAddress(socketAddress.hostname, socketAddress.port))
+                }
                 return Ok(InetMultiaddress(hostName, protocol, null, listOf()))
             }
             return Err("Could not create InetMultiaddress from socket")

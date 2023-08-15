@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
-import org.erwinkok.libp2p.core.host.BasicHost
+import org.erwinkok.libp2p.core.host.Host
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Stream
 import org.erwinkok.libp2p.core.resourcemanager.ResourceScope.Companion.ReservationPriorityAlways
@@ -36,7 +36,7 @@ import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
 import java.nio.ByteBuffer
 import kotlin.random.Random
-import kotlin.system.measureTimeMillis
+import kotlin.system.measureNanoTime
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -44,7 +44,7 @@ private val logger = KotlinLogging.logger {}
 
 class PingService(
     private val scope: CoroutineScope,
-    private val host: BasicHost,
+    private val host: Host,
 ) : AwaitableClosable {
     private val _context = Job(scope.coroutineContext[Job])
 
@@ -142,7 +142,7 @@ class PingService(
 
         val input = ByteArray(PingSize)
         val output = Random.nextBytes(PingSize)
-        val elapsed = measureTimeMillis {
+        val elapsed = measureNanoTime {
             stream.output.writeFully(output)
             stream.output.flush()
             stream.input.readFully(input)

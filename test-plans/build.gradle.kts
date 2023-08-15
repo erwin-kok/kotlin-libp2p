@@ -4,7 +4,7 @@ plugins {
 }
 
 application {
-    mainClass.set("org.erwinkok.libp2p.examples.chat.ApplicationKt")
+    mainClass.set("org.erwinkok.libp2p.app.ApplicationKt")
 }
 
 dependencies {
@@ -14,18 +14,18 @@ dependencies {
     implementation(projects.libp2pCore)
     implementation(projects.libp2pCrypto)
     implementation(projects.libp2pMuxerMplex)
-    implementation(projects.libp2pDatastoreRocksdb)
     implementation(projects.libp2pSecurityNoise)
     implementation(projects.libp2pTransportTcp)
 
     implementation(libs.ipaddress)
+    implementation(libs.jedis)
+    implementation(libs.klaxon)
     implementation(libs.kotlin.logging)
     implementation(libs.kotlinx.atomicfu)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.ktor.network)
     implementation(libs.multiformat)
     implementation(libs.result.monad)
-    implementation(libs.rocksdb)
     implementation(libs.slf4j.api)
 
     runtimeOnly(libs.logback.classic)
