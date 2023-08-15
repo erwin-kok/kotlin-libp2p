@@ -1,10 +1,21 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
-    id("libp2p.application")
+    id("libp2p.shadow")
 }
 
 application {
-    mainClass.set("org.erwinkok.libp2p.app.ApplicationKt")
+    mainClass.set("org.erwinkok.libp2p.testplans.ping.PingKt")
+}
+
+tasks.withType<ShadowJar> {
+    archiveBaseName.set("test-plans-shadow")
+    archiveClassifier.set("")
+    archiveVersion.set("")
+    manifest {
+        attributes["Main-Class"] = "org.erwinkok.libp2p.testplans.ping.PingKt"
+    }
 }
 
 dependencies {

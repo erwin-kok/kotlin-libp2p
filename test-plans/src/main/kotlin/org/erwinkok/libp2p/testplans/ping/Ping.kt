@@ -115,12 +115,13 @@ fun main() {
             .map { it.withPeerId(localIdentity.peerId) }
         logger.info { "Local addresses the Host listens on: ${addresses.joinToString()} " }
 
+        var result = true
         createRedisClient(redisAddr, testTimeout)
             .onFailure {
                 logger.error { "Error: ${errorMessage(it)}" }
             }
             .onSuccess { redisClient ->
-                if (isDialer) {
+                result = if (isDialer) {
                     dialer(scope, host, redisClient, testTimeout)
                 } else {
                     listener(host, redisClient, testTimeout)
@@ -130,21 +131,26 @@ fun main() {
 
         host.close()
         host.awaitClosed()
+
+        val error = if (result) 1 else 0
+        exitProcess(error)
     }
 }
 
 private suspend fun listener(host: Host, redisClient: Jedis, testTimeout: Duration): Boolean {
+    logger.info { "Configured as listener..." }
     val address = host.addresses().firstOrNull()
     if (address == null) {
         logger.error { "Failed to get listen address" }
         return true
     }
-    redisClient.rpush("listenerAddr", address.toString())
+    redisClient.rpush("listenerAddr", address.withPeerId(host.id).toString())
     delay(testTimeout)
     return false
 }
 
 private suspend fun dialer(scope: CoroutineScope, host: Host, redisClient: Jedis, testTimeout: Duration): Boolean {
+    logger.info { "Configured as dialer..." }
     val listenerAddr = redisClient.blpop(testTimeout.inWholeSeconds.toInt(), "listenerAddr")
     if (listenerAddr == null) {
         logger.error { "Failed to wait for listener to be ready" }
@@ -154,9 +160,10 @@ private suspend fun dialer(scope: CoroutineScope, host: Host, redisClient: Jedis
         logger.error { "Didn't receive any address from listener" }
         return true
     }
-    val peerAddress = InetMultiaddress.fromString(listenerAddr[0])
+    val address = listenerAddr[1]
+    val peerAddress = InetMultiaddress.fromString(address)
         .getOrElse {
-            logger.error { "Could not parse Multiaddress: $listenerAddr" }
+            logger.error { "Could not parse Multiaddress: $address" }
             return true
         }
     logger.info { "Other peer multiaddr is: $peerAddress" }
@@ -194,6 +201,7 @@ private suspend fun dialer(scope: CoroutineScope, host: Host, redisClient: Jedis
 }
 
 private fun createRedisClient(redisAddr: String, timeout: Duration): Result<Jedis> {
+    logger.info { "Connecting to Redis address: $redisAddr" }
     val waitMillis = timeout.inWholeMilliseconds.toInt()
     val config = DefaultJedisClientConfig.builder()
         .timeoutMillis(waitMillis)

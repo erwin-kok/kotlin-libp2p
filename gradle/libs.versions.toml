@@ -31,10 +31,13 @@ slf4j-api = "2.0.7"
 nexus-plugin = "1.2.0"
 versions-plugin = "0.47.0"
 
+shadow = "8.1.1"
+
 [libraries]
 # Libraries for the build system
 buildscript-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu-gradle-plugin", version.ref = "kotlinx-atomicfu" }
 buildscript-detekt = { module = "io.gitlab.arturbosch.detekt:detekt-gradle-plugin", version.ref = "detekt-plugin" }
+buildscript-shadow = { module = "com.github.johnrengelman:shadow", version.ref = "shadow" }
 buildscript-kotlin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 buildscript-kover = { module = "org.jetbrains.kotlinx.kover:org.jetbrains.kotlinx.kover.gradle.plugin", version.ref = "kover-plugin" }
 buildscript-ktlint = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-plugin" }
@@ -75,4 +78,5 @@ slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 atomicfu = { id = "kotlinx-atomicfu", version.ref = "kotlinx-atomicfu" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 build-nexus = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus-plugin" }
+build-shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
 build-versions = { id = "com.github.ben-manes.versions", version.ref = "versions-plugin" }
