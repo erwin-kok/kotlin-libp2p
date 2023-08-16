@@ -7,7 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
@@ -124,7 +124,7 @@ fun main() {
                 result = if (isDialer) {
                     dialer(scope, host, redisClient, testTimeout)
                 } else {
-                    listener(host, redisClient, testTimeout)
+                    listener(scope, host, redisClient, testTimeout)
                 }
                 redisClient.close()
             }
@@ -178,7 +178,7 @@ private suspend fun dialer(scope: CoroutineScope, host: Host, redisClient: Jedis
     host.peerstore.addAddress(peerId, peerAddress, ProviderAddrTTL)
     host.peerstore.addProtocols(peerId, setOf(ProtocolId.of("/ipfs/ping/1.0.0")))
 
-    var pingRTTMilllis = 0L
+    var pingResult: PingService.PingResult? = null
     val handshakePlusOneRTT = measureNanoTime {
         host.connect(AddressInfo.fromPeerId(peerId))
             .getOrElse {
@@ -187,11 +187,22 @@ private suspend fun dialer(scope: CoroutineScope, host: Host, redisClient: Jedis
             }
         val pingService = PingService(scope, host)
         val flow = pingService.ping(peerId, testTimeout)
-        pingRTTMilllis = withTimeoutOrNull(testTimeout) {
-            flow.first().rtt
-        } ?: 0
+        pingResult = withTimeoutOrNull(testTimeout) { flow.firstOrNull() }
         pingService.close()
     }
+
+    if (pingResult == null) {
+        logger.error { "Error occurred while receiving from peer" }
+        return true
+    }
+
+    val error = pingResult?.error
+    if (error != null) {
+        logger.error { "Error occurred while receiving from peer: ${errorMessage(error)}" }
+        return true
+    }
+
+    val pingRTTMilllis = pingResult?.rtt ?: 0L
 
     val testResult = JsonObject()
     testResult["handshakePlusOneRTTMillis"] = handshakePlusOneRTT / 1000000.0

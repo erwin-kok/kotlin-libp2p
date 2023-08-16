@@ -98,6 +98,7 @@ class PingService(
         val stream = host.newStream(peerId, PingId)
             .getOrElse {
                 send(PingResult(error = it))
+                close(it)
                 return@channelFlow
             }
         stream.streamScope.setService(ServiceName)
@@ -105,6 +106,7 @@ class PingService(
                 logger.debug { "error attaching stream to ping service: ${errorMessage(it)}" }
                 stream.reset()
                 send(PingResult(error = it))
+                close(it)
                 return@channelFlow
             }
         launch(_context + CoroutineName("ping-service-$peerId")) {
@@ -114,11 +116,12 @@ class PingService(
                         .onSuccess {
                             host.peerstore.recordLatency(peerId, it)
                             send(PingResult(rtt = it))
+                            delay(delay)
                         }
                         .onFailure {
-                            close(it)
+                            logger.warn { "Error occurred: ${errorMessage(it)}" }
+                            close()
                         }
-                    delay(delay)
                 }
             } catch (e: CancellationException) {
                 // Do nothing...
@@ -135,9 +138,8 @@ class PingService(
     private suspend fun ping(stream: Stream): Result<Long> {
         stream.streamScope.reserveMemory(2 * PingSize, ReservationPriorityAlways)
             .getOrElse {
-                logger.debug { "error reserving memory for ping stream: ${errorMessage(it)}" }
                 stream.reset()
-                return Err(it)
+                return Err("error reserving memory for ping stream: ${errorMessage(it)}")
             }
 
         val input = ByteArray(PingSize)
@@ -145,9 +147,15 @@ class PingService(
         val elapsed = measureNanoTime {
             stream.output.writeFully(output)
             stream.output.flush()
-            stream.input.readFully(input)
+            try {
+                stream.input.readFully(input)
+            } catch (e: Exception) {
+                stream.streamScope.releaseMemory(2 * PingSize)
+                return Err("while waiting for ping reply: ${errorMessage(e)}")
+            }
         }
         if (!input.contentEquals(output)) {
+            stream.streamScope.releaseMemory(2 * PingSize)
             return Err("ping packet was incorrect")
         }
         stream.streamScope.releaseMemory(2 * PingSize)
