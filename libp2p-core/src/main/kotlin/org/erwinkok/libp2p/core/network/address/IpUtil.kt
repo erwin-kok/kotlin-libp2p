@@ -56,7 +56,7 @@ object IpUtil {
     }
 
     fun isIpLoopback(address: InetMultiaddress): Boolean {
-        return address.hostName?.address?.isLinkLocal ?: false
+        return address.hostName?.address?.isLoopback ?: false
     }
 
     fun isIp6LinkLocal(address: InetMultiaddress): Boolean {

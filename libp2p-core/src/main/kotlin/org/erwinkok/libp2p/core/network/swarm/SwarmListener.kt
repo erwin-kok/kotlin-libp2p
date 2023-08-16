@@ -11,7 +11,7 @@ import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
-import org.erwinkok.libp2p.core.network.address.NetworkInterface.resolveUnspecifiedAddresses
+import org.erwinkok.libp2p.core.network.address.AddressUtil.resolveUnspecifiedAddresses
 import org.erwinkok.libp2p.core.network.swarm.Swarm.Companion.ErrSwarmClosed
 import org.erwinkok.result.CombinedError
 import org.erwinkok.result.Err

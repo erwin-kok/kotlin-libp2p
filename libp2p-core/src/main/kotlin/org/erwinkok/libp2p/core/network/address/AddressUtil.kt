@@ -31,65 +31,54 @@ object AddressUtil {
         return result
     }
 
-    fun addressOverNonLocalIp(address: InetMultiaddress): Boolean {
-        return !IpUtil.isIp6LinkLocal(address)
-    }
-
-    fun resolveUnspecifiedAddress(resolve: InetMultiaddress, interfaceAddresses: List<InetMultiaddress>): Result<MutableSet<InetMultiaddress>> {
+    fun resolveUnspecifiedAddress(resolve: InetMultiaddress, interfaceAddresses: List<InetMultiaddress>): Result<List<InetMultiaddress>> {
         if (!IpUtil.isIpUnspecified(resolve)) {
-            return Ok(mutableSetOf(resolve))
+            return Ok(listOf(resolve))
         }
-        val result = mutableSetOf<InetMultiaddress>()
-        val filteredInterfaceAddresses = interfaceAddresses.filter {
-            val resolveAddress = resolve.hostName?.address
-            val interfaceAddress = it.hostName?.address
-            resolveAddress != null &&
-                interfaceAddress != null &&
-                ((resolveAddress.isIPv4 && interfaceAddress.isIPv4) || (resolveAddress.isIPv6 && interfaceAddress.isIPv6))
-        }
-        for (interfaceAddress in filteredInterfaceAddresses) {
-            val address = interfaceAddress.hostName?.address
-            if (address != null) {
-                val port = resolve.hostName?.port
-                val resolvedAddress = if (port != null) {
-                    resolve.withHostName(HostName(address, port))
+        val hostName = resolve.hostName ?: return Err("")
+        val isIPv4 = hostName.asAddress()?.isIPv4 ?: true
+        val result = interfaceAddresses
+            .mapNotNull { it.hostName?.asAddress() }
+            .filter {
+                if (isIPv4) {
+                    it.isIPv4
                 } else {
-                    resolve.withHostName(HostName(address))
-                }
-                if (!IpUtil.isIpUnspecified(resolvedAddress)) {
-                    result.add(resolvedAddress)
+                    it.isIPv6
                 }
             }
+            .map { resolve.withHostName(HostName(it, hostName.port)) }
+        return if (result.isEmpty()) {
+            Err("failed to resolve: $resolve")
+        } else {
+            Ok(result)
         }
-        if (result.isEmpty()) {
-            return Err("failed to resolve: $resolve")
-        }
-        return Ok(result)
     }
 
-    fun resolveUnspecifiedAddresses(unspecifiedAddresses: List<InetMultiaddress>, ifaceAddresses: List<InetMultiaddress>?): Result<MutableSet<InetMultiaddress>> {
-        val ifaceAddrs = if (ifaceAddresses.isNullOrEmpty()) {
+    fun resolveUnspecifiedAddresses(unspecifiedAddresses: List<InetMultiaddress>, _interfaceAddresses: List<InetMultiaddress>? = null): Result<List<InetMultiaddress>> {
+        val interfaceAddresses = if (_interfaceAddresses.isNullOrEmpty()) {
             interfaceAddresses()
                 .getOrElse { return Err(it) }
         } else {
-            ifaceAddresses
+            _interfaceAddresses
         }
-        val result = mutableSetOf<InetMultiaddress>()
-        for (unspecifiedAddress in unspecifiedAddresses) {
-            resolveUnspecifiedAddress(unspecifiedAddress, ifaceAddrs)
-                .onSuccess { result.addAll(it) }
+        val result = mutableListOf<InetMultiaddress>()
+        for (address in unspecifiedAddresses) {
+            resolveUnspecifiedAddress(address, interfaceAddresses)
+                .onSuccess {
+                    result.addAll(it)
+                }
         }
-        if (result.isEmpty()) {
-            return Err("failed to specify addresses: $unspecifiedAddresses")
+        return if (result.isEmpty()) {
+            Err("failed to specify addresses: $unspecifiedAddresses")
+        } else {
+            Ok(IpUtil.unique(result))
         }
-        logger.debug { "resolveUnspecifiedAddresses: $unspecifiedAddresses, $ifaceAddrs, $result" }
-        return Ok(result)
     }
 
     fun interfaceAddresses(): Result<List<InetMultiaddress>> {
         val interfaceMultiaddresses = NetworkInterface.interfaceMultiaddresses()
             .getOrElse { return Err(it) }
-        return Ok(interfaceMultiaddresses.filter { addressOverNonLocalIp(it) })
+        return Ok(interfaceMultiaddresses.filter { !IpUtil.isIp6LinkLocal(it) })
     }
 
     fun addressInList(address: InetMultiaddress, list: List<InetMultiaddress>): Boolean {

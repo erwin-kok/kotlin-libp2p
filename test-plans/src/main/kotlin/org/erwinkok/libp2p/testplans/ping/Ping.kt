@@ -139,12 +139,13 @@ fun main() {
 
 private suspend fun listener(host: Host, redisClient: Jedis, testTimeout: Duration): Boolean {
     logger.info { "Configured as listener..." }
-    val address = host.addresses().firstOrNull()
-    if (address == null) {
+    val hostAddress = host.addresses().firstOrNull()
+    if (hostAddress == null) {
         logger.error { "Failed to get listen address" }
         return true
     }
-    redisClient.rpush("listenerAddr", address.withPeerId(host.id).toString())
+    val address = hostAddress.withPeerId(host.id).toString()
+    redisClient.rpush("listenerAddr", address)
     delay(testTimeout)
     return false
 }

@@ -1,6 +1,7 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.host
 
+import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -13,6 +14,8 @@ import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.address.IpUtil
+import org.erwinkok.libp2p.core.network.address.NetworkInterface
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.TempAddrTTL
 import org.erwinkok.libp2p.core.protocol.ping.PingService
@@ -27,19 +30,23 @@ import org.erwinkok.result.getOrElse
 import org.erwinkok.result.map
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
+import kotlin.concurrent.withLock
 
 private val logger = KotlinLogging.logger {}
 
 class BasicHost(
     val scope: CoroutineScope,
     val localIdentity: LocalIdentity,
-    val hostConfig: HostConfig,
+    hostConfig: HostConfig,
     override val network: Network,
     override val peerstore: Peerstore,
     override val multistreamMuxer: MultistreamMuxer<Stream>,
     override val eventBus: EventBus,
 ) : AwaitableClosable, Host {
     private val _context = SupervisorJob(scope.coroutineContext[Job])
+    private val addressMutex = ReentrantLock()
+    private val filteredInterfaceAddresses = mutableListOf<InetMultiaddress>()
+    private val allInterfaceAddresses = mutableListOf<InetMultiaddress>()
 
     val pingService: PingService?
 
@@ -50,10 +57,35 @@ class BasicHost(
         get() = localIdentity.peerId
 
     init {
+        updateLocalIpAddress()
+
         pingService = if (hostConfig.enablePing) {
             PingService(scope, this)
         } else {
             null
+        }
+    }
+
+    private fun updateLocalIpAddress() {
+        addressMutex.withLock {
+            filteredInterfaceAddresses.clear()
+            allInterfaceAddresses.clear()
+            NetworkInterface.interfaceMultiaddresses()
+                .onFailure {
+                    logger.warn { "failed to resolve local interface addresses: ${errorMessage(it)}" }
+                    filteredInterfaceAddresses.add(IpUtil.IP4Loopback)
+                    filteredInterfaceAddresses.add(IpUtil.IP6Loopback)
+                    allInterfaceAddresses.addAll(filteredInterfaceAddresses)
+                }
+                .onSuccess {
+                    val filteredAddresses = it.filter { i -> !IpUtil.isIp6LinkLocal(i) }
+                    allInterfaceAddresses.addAll(filteredAddresses)
+                    if (filteredInterfaceAddresses.isEmpty()) {
+                        filteredInterfaceAddresses.addAll(allInterfaceAddresses)
+                    } else {
+                        filteredInterfaceAddresses.addAll(allInterfaceAddresses.filter { m -> IpUtil.isIpLoopback(m) })
+                    }
+                }
         }
     }
 
@@ -81,9 +113,11 @@ class BasicHost(
     }
 
     override suspend fun newStream(peerId: PeerId, protocols: Set<ProtocolId>): Result<Stream> {
+        connect(AddressInfo.fromPeerId(peerId))
+            .onFailure { return Err(it) }
         val stream = network.newStream(peerId)
             .getOrElse { return Err(it) }
-        val preferredProtocol = peerstore.firstSupportedProtocol(peerId, protocols)
+        val preferredProtocol = preferredProtocol(peerId, protocols)
             .getOrElse {
                 stream.reset()
                 return Err(it)
@@ -101,10 +135,15 @@ class BasicHost(
         return Ok(stream)
     }
 
-    override suspend fun connect(addressInfo: AddressInfo): Result<Unit> {
-        val addresses = addressInfo.p2pAddresses()
+    private suspend fun preferredProtocol(peerId: PeerId, protocols: Set<ProtocolId>): Result<ProtocolId> {
+        val supported = peerstore.supportsProtocols(peerId, protocols)
             .getOrElse { return Err(it) }
-        peerstore.addAddresses(addressInfo.peerId, addresses, TempAddrTTL)
+        val preferred = supported.firstOrNull() ?: ProtocolId.Null
+        return Ok(preferred)
+    }
+
+    override suspend fun connect(addressInfo: AddressInfo): Result<Unit> {
+        peerstore.addAddresses(addressInfo.peerId, addressInfo.addresses, TempAddrTTL)
         if (network.connectedness(addressInfo.peerId) == Connectedness.Connected) {
             return Ok(Unit)
         }
@@ -120,7 +159,15 @@ class BasicHost(
     }
 
     override fun addresses(): List<InetMultiaddress> {
-        return network.listenAddresses()
+        return allAddresses()
+    }
+
+    fun allAddresses(): List<InetMultiaddress> {
+        val listenAddresses = network.listenAddresses()
+        if (listenAddresses.isEmpty()) {
+            return listenAddresses
+        }
+        return listenAddresses
     }
 
     override fun close() {
