@@ -83,17 +83,6 @@ internal class AddressUtilTest {
         assertErrorResult("failed to specify addresses: [/ip6/::]") { AddressUtil.resolveUnspecifiedAddresses(listOf(ip6u), listOf(ip4i)) }
     }
 
-    @Test
-    fun testAddressInList() {
-        val multiaddresses = listOf(
-            InetMultiaddress.fromString("/ip4/0.0.0.0/tcp/1234").expectNoErrors(),
-            InetMultiaddress.fromString("/ip6/::/tcp/1234").expectNoErrors(),
-            InetMultiaddress.fromString("/ip6/fe80::/tcp/1234").expectNoErrors(),
-        )
-        assertFalse(AddressUtil.addressInList(InetMultiaddress.fromString("/ip6/fe80::1/tcp/1234").expectNoErrors(), multiaddresses))
-        assertTrue(AddressUtil.addressInList(InetMultiaddress.fromString("/ip4/0.0.0.0/tcp/1234").expectNoErrors(), multiaddresses))
-    }
-
     companion object {
         fun assertInetMultiaddressEqual(expected: List<InetMultiaddress>, actual: List<InetMultiaddress>) {
             assertEquals(expected.size, actual.size, "Expected and actual list sizes differ")

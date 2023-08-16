@@ -71,7 +71,7 @@ object AddressUtil {
         return if (result.isEmpty()) {
             Err("failed to specify addresses: $unspecifiedAddresses")
         } else {
-            Ok(IpUtil.unique(result))
+            Ok(result)
         }
     }
 
@@ -79,17 +79,5 @@ object AddressUtil {
         val interfaceMultiaddresses = NetworkInterface.interfaceMultiaddresses()
             .getOrElse { return Err(it) }
         return Ok(interfaceMultiaddresses.filter { !IpUtil.isIp6LinkLocal(it) })
-    }
-
-    fun addressInList(address: InetMultiaddress, list: List<InetMultiaddress>): Boolean {
-        return list.any { it == address }
-    }
-
-    fun addressIsShareableOnWan(address: InetMultiaddress): Boolean {
-        return if (IpUtil.isIpLoopback(address) || IpUtil.isIp6LinkLocal(address) || IpUtil.isIpUnspecified(address)) {
-            false
-        } else {
-            IpUtil.isThinWaist(address)
-        }
     }
 }

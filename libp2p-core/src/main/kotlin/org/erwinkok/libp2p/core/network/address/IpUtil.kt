@@ -88,6 +88,10 @@ object IpUtil {
         return false
     }
 
+    fun contains(address: InetMultiaddress, list: List<InetMultiaddress>): Boolean {
+        return list.any { it == address }
+    }
+
     fun unique(addresses: List<InetMultiaddress>): List<InetMultiaddress> {
         return addresses.toSet().toList()
     }

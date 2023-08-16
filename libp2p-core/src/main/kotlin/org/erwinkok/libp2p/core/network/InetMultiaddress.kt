@@ -4,6 +4,7 @@ package org.erwinkok.libp2p.core.network
 
 import inet.ipaddr.HostName
 import inet.ipaddr.IPAddressString
+import inet.ipaddr.ipv6.IPv6Address
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.SocketAddress
 import mu.KotlinLogging
@@ -18,8 +19,6 @@ import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.flatMap
 import java.io.ByteArrayOutputStream
-import java.net.InetAddress
-import java.net.UnknownHostException
 
 private val logger = KotlinLogging.logger {}
 
@@ -241,10 +240,16 @@ class InetMultiaddress private constructor(val hostName: HostName?, val networkP
 
         fun fromSocketAndProtocol(socketAddress: SocketAddress, protocol: NetworkProtocol): Result<InetMultiaddress> {
             if (socketAddress is InetSocketAddress) {
-                val hostName = try {
-                    val address = InetAddress.getByName(socketAddress.hostname)
-                    HostName(java.net.InetSocketAddress(address, socketAddress.port))
-                } catch (e: UnknownHostException) {
+                // If possible, convert to Ipv4 address
+                val rawAddress = IPAddressString(socketAddress.hostname).address
+                val ipAddress = if (rawAddress is IPv6Address && (rawAddress.isIPv4Compatible || rawAddress.isIPv4Mapped)) {
+                    rawAddress.embeddedIPv4Address
+                } else {
+                    rawAddress
+                }
+                val hostName = if (ipAddress != null) {
+                    HostName(ipAddress, socketAddress.port)
+                } else {
                     HostName(java.net.InetSocketAddress(socketAddress.hostname, socketAddress.port))
                 }
                 return Ok(InetMultiaddress(hostName, protocol, null, listOf()))

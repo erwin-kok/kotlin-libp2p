@@ -14,6 +14,7 @@ import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.address.AddressUtil
 import org.erwinkok.libp2p.core.network.address.IpUtil
 import org.erwinkok.libp2p.core.network.address.NetworkInterface
 import org.erwinkok.libp2p.core.peerstore.Peerstore
@@ -28,6 +29,7 @@ import org.erwinkok.result.Result
 import org.erwinkok.result.errorMessage
 import org.erwinkok.result.getOrElse
 import org.erwinkok.result.map
+import org.erwinkok.result.mapBoth
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
 import kotlin.concurrent.withLock
@@ -167,7 +169,20 @@ class BasicHost(
         if (listenAddresses.isEmpty()) {
             return listenAddresses
         }
-        return listenAddresses
+        val localFilteredInterfaceAddresses = addressMutex.withLock {
+            filteredInterfaceAddresses
+        }
+        val finalAddresses = AddressUtil.resolveUnspecifiedAddresses(listenAddresses, localFilteredInterfaceAddresses)
+            .mapBoth(
+                {
+                    it
+                },
+                {
+                    logger.debug { "failed to resolve listen addresses" }
+                    listOf()
+                }
+            )
+        return IpUtil.unique(finalAddresses)
     }
 
     override fun close() {
