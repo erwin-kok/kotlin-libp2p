@@ -56,7 +56,7 @@ object IpUtil {
     }
 
     fun isIpLoopback(address: InetMultiaddress): Boolean {
-        return address.hostName?.address?.isLinkLocal ?: false
+        return address.hostName?.address?.isLoopback ?: false
     }
 
     fun isIp6LinkLocal(address: InetMultiaddress): Boolean {
@@ -86,6 +86,10 @@ object IpUtil {
             return inAddrRange(ip, Private6)
         }
         return false
+    }
+
+    fun contains(address: InetMultiaddress, list: List<InetMultiaddress>): Boolean {
+        return list.any { it == address }
     }
 
     fun unique(addresses: List<InetMultiaddress>): List<InetMultiaddress> {

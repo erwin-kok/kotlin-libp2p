@@ -38,8 +38,10 @@ import org.junit.jupiter.api.Test
 import java.net.ServerSocket
 
 internal class TcpTransportTest {
-    private val validMultiaddress = InetMultiaddress.fromString("/ip4/127.0.0.1/tcp/1234").expectNoErrors()
-    private val invalidMultiaddress = InetMultiaddress.fromString("/ip4/127.0.0.1/tcp/0").expectNoErrors()
+    private val validDialMultiaddress = InetMultiaddress.fromString("/ip4/127.0.0.1/tcp/1234").expectNoErrors()
+    private val validListenMultiaddress = InetMultiaddress.fromString("/ip4/0.0.0.0/tcp/0").expectNoErrors()
+    private val invalidDialMultiaddress = InetMultiaddress.fromString("/ip4/127.0.0.1/tcp/0").expectNoErrors()
+    private val invalidListenMultiaddress = InetMultiaddress.fromString("/dns/monkey/tcp/0").expectNoErrors()
     private val validPeerId = PeerId.fromString("QmXkJYqRgNvjTbmnS6YzVDDnSQaepQCCaBStB5izqajBea").expectNoErrors()
 
     private val upgrader = mockk<Upgrader>()
@@ -76,20 +78,32 @@ internal class TcpTransportTest {
     @Test
     fun canDial() {
         val transport = TcpTransport.create(mockk(), mockk(), Dispatchers.IO).expectNoErrors()
-        assertTrue(transport.canDial(validMultiaddress))
+        assertTrue(transport.canDial(validDialMultiaddress))
     }
 
     @Test
     fun canNotDial() {
         val transport = TcpTransport.create(mockk(), mockk(), Dispatchers.IO).expectNoErrors()
-        assertFalse(transport.canDial(invalidMultiaddress))
+        assertFalse(transport.canDial(invalidDialMultiaddress))
+    }
+
+    @Test
+    fun canListen() {
+        val transport = TcpTransport.create(mockk(), mockk(), Dispatchers.IO).expectNoErrors()
+        assertTrue(transport.canListen(validListenMultiaddress))
+    }
+
+    @Test
+    fun canNotListen() {
+        val transport = TcpTransport.create(mockk(), mockk(), Dispatchers.IO).expectNoErrors()
+        assertFalse(transport.canListen(invalidListenMultiaddress))
     }
 
     @Test
     fun dialInvalidHostname() = runTest {
         val transport = TcpTransport.create(mockk(), mockk(), Dispatchers.IO).expectNoErrors()
-        coAssertErrorResult("TcpTransport can only dial/listen to valid tcp addresses, not /ip4/127.0.0.1/tcp/0") {
-            transport.dial(validPeerId, invalidMultiaddress)
+        coAssertErrorResult("TcpTransport can only dial to valid tcp addresses, not /ip4/127.0.0.1/tcp/0") {
+            transport.dial(validPeerId, invalidDialMultiaddress)
         }
     }
 
@@ -99,7 +113,7 @@ internal class TcpTransportTest {
         coEvery { resourceManager.openConnection(Direction.DirOutbound, true, any()) } returns Err("An Error")
         val transport = TcpTransport.create(mockk(), resourceManager, Dispatchers.IO).expectNoErrors()
         coAssertErrorResult("resource manager blocked outgoing connection: peer=QmXkJYqRgNvjTbmnS6YzVDDnSQaepQCCaBStB5izqajBea, address=/ip4/127.0.0.1/tcp/1234, error=An Error") {
-            transport.dial(validPeerId, validMultiaddress)
+            transport.dial(validPeerId, validDialMultiaddress)
         }
     }
 
@@ -112,7 +126,7 @@ internal class TcpTransportTest {
         coEvery { connectionManagementScope.done() } just runs
         val transport = TcpTransport.create(mockk(), resourceManager, Dispatchers.IO).expectNoErrors()
         coAssertErrorResult("resource manager blocked outgoing connection: peer=QmXkJYqRgNvjTbmnS6YzVDDnSQaepQCCaBStB5izqajBea, address=/ip4/127.0.0.1/tcp/1234, error=Other Error") {
-            transport.dial(validPeerId, validMultiaddress)
+            transport.dial(validPeerId, validDialMultiaddress)
         }
     }
 

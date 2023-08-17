@@ -179,7 +179,11 @@ class HostBuilder {
         addTransports(swarm, NullResourceManager, upgrader, Dispatchers.IO)
         addListenAddresses(swarm)
 
-        return Ok(host)
+        return if (errors.hasErrors) {
+            Err(errors.error())
+        } else {
+            Ok(host)
+        }
     }
 
     private fun createDatastore(coroutineScope: CoroutineScope): Result<BatchingDatastore> {

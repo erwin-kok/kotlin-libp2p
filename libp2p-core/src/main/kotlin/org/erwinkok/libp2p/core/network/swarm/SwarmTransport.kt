@@ -58,7 +58,7 @@ class SwarmTransport : Closeable {
             if (transports.isEmpty()) {
                 return Err("Swarm has no transports configured")
             }
-            val transport = transports.filter { it.value.canDial(address) }.firstNotNullOfOrNull { it.value }
+            val transport = transports.filter { it.value.canListen(address) }.firstNotNullOfOrNull { it.value }
             return if (transport != null) {
                 Ok(transport)
             } else {

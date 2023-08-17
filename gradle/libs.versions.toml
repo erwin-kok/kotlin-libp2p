@@ -1,6 +1,6 @@
 [versions]
 kotlinx-coroutines = "1.7.3"
-kotlinx-atomicfu = "0.21.0"
+kotlinx-atomicfu = "0.22.0"
 kotlinx-serialization = "1.5.1"
 kotlin = "1.9.0"
 
@@ -10,21 +10,23 @@ ktlint-plugin = "10.3.0"
 protobuf-plugin = "0.9.2"
 testlogger-plugin = "3.2.0"
 
-caffeine = "3.1.7"
-mockk = "1.13.5"
+caffeine = "3.1.8"
 ipaddress = "5.4.0"
+jedis = "4.4.3"
 junit-jupiter = "5.10.0"
 kerby-asn1 = "2.0.3"
 klaxon = "5.6"
 kotlin-logging = "3.0.5"
 ktor = "2.3.2"
-logback-classic = "1.4.8"
+logback-classic = "1.4.11"
+mockk = "1.13.7"
 multiformat = "1.1.0"
 noise-java = "1.0.0"
 protobuf = "3.22.0"
 reflections = "0.10.2"
 result-monad = "1.4.0"
 rocksdb = "8.3.2"
+shadow = "8.1.1"
 slf4j-api = "2.0.7"
 
 nexus-plugin = "1.2.0"
@@ -34,6 +36,7 @@ versions-plugin = "0.47.0"
 # Libraries for the build system
 buildscript-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu-gradle-plugin", version.ref = "kotlinx-atomicfu" }
 buildscript-detekt = { module = "io.gitlab.arturbosch.detekt:detekt-gradle-plugin", version.ref = "detekt-plugin" }
+buildscript-shadow = { module = "com.github.johnrengelman:shadow", version.ref = "shadow" }
 buildscript-kotlin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 buildscript-kover = { module = "org.jetbrains.kotlinx.kover:org.jetbrains.kotlinx.kover.gradle.plugin", version.ref = "kover-plugin" }
 buildscript-ktlint = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-plugin" }
@@ -45,6 +48,7 @@ buildscript-testlogger = { module = "com.adarshr:gradle-test-logger-plugin", ver
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 io-mockk-mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 ipaddress = { module = "com.github.seancfoley:ipaddress", version.ref = "ipaddress" }
+jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
 junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit-jupiter" }
@@ -73,4 +77,5 @@ slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 atomicfu = { id = "kotlinx-atomicfu", version.ref = "kotlinx-atomicfu" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 build-nexus = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus-plugin" }
+build-shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
 build-versions = { id = "com.github.ben-manes.versions", version.ref = "versions-plugin" }

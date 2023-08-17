@@ -21,15 +21,18 @@ internal class AddressUtilTest {
         )
         val good = listOf(
             InetMultiaddress.fromString("/ip4/127.0.0.1/tcp/1234").expectNoErrors(),
-            InetMultiaddress.fromString("/ip6/::1/tcp/1234").expectNoErrors(),
+            InetMultiaddress.fromString("/ip4/1.1.1.1/tcp/999").expectNoErrors(),
             InetMultiaddress.fromString("/ip4/1.2.3.4/udp/1234/utp").expectNoErrors(),
         )
         val goodAndBad = mutableListOf<InetMultiaddress>()
         goodAndBad.addAll(good)
         goodAndBad.addAll(bad)
-        assertInetMultiaddressEqual(AddressUtil.filterAddresses(bad) { AddressUtil.addressOverNonLocalIp(it) }, listOf())
-        assertInetMultiaddressEqual(AddressUtil.filterAddresses(good) { AddressUtil.addressOverNonLocalIp(it) }, good)
-        assertInetMultiaddressEqual(AddressUtil.filterAddresses(goodAndBad) { AddressUtil.addressOverNonLocalIp(it) }, good)
+        val filter: (InetMultiaddress) -> Boolean = {
+            it.isIpv4
+        }
+        assertInetMultiaddressEqual(AddressUtil.filterAddresses(bad, filter), listOf())
+        assertInetMultiaddressEqual(AddressUtil.filterAddresses(good, filter), good)
+        assertInetMultiaddressEqual(AddressUtil.filterAddresses(goodAndBad, filter), good)
     }
 
     @Test
@@ -47,12 +50,14 @@ internal class AddressUtilTest {
             InetMultiaddress.fromString("/ip6/::/tcp/1234").expectNoErrors(),
             InetMultiaddress.fromString("/ip6/::100/tcp/1234").expectNoErrors(),
         )
+
         val iface = listOf(
             InetMultiaddress.fromString("/ip4/127.0.0.1").expectNoErrors(),
             InetMultiaddress.fromString("/ip4/10.20.30.40").expectNoErrors(),
             InetMultiaddress.fromString("/ip6/::1").expectNoErrors(),
             InetMultiaddress.fromString("/ip6/::f").expectNoErrors(),
         )
+
         val spec = listOf(
             InetMultiaddress.fromString("/ip4/127.0.0.1/tcp/1234").expectNoErrors(),
             InetMultiaddress.fromString("/ip4/10.20.30.40/tcp/1234").expectNoErrors(),
@@ -61,28 +66,21 @@ internal class AddressUtilTest {
             InetMultiaddress.fromString("/ip6/::f/tcp/1234").expectNoErrors(),
             InetMultiaddress.fromString("/ip6/::100/tcp/1234").expectNoErrors(),
         )
-        val actual = AddressUtil.resolveUnspecifiedAddresses(unspec, iface).expectNoErrors()
-        assertTrue(spec.containsAll(actual))
-        assertTrue(actual.containsAll(spec))
-        val ip4u = listOf(InetMultiaddress.fromString("/ip4/0.0.0.0").expectNoErrors())
-        val ip4i = listOf(InetMultiaddress.fromString("/ip4/1.2.3.4").expectNoErrors())
-        val ip6u = listOf(InetMultiaddress.fromString("/ip6/::").expectNoErrors())
-        val ip6i = listOf(InetMultiaddress.fromString("/ip6/::1").expectNoErrors())
-        assertErrorResult("failed to resolve: /ip4/0.0.0.0") { AddressUtil.resolveUnspecifiedAddress(ip4u[0], ip6i) }
-        assertErrorResult("failed to resolve: /ip6/::") { AddressUtil.resolveUnspecifiedAddress(ip6u[0], ip4i) }
-        assertErrorResult("failed to specify addresses: [/ip6/::]") { AddressUtil.resolveUnspecifiedAddresses(ip6u, ip4i) }
-        assertErrorResult("failed to specify addresses: [/ip4/0.0.0.0]") { AddressUtil.resolveUnspecifiedAddresses(ip4u, ip6i) }
-    }
 
-    @Test
-    fun testAddressInList() {
-        val multiaddresses = listOf(
-            InetMultiaddress.fromString("/ip4/0.0.0.0/tcp/1234").expectNoErrors(),
-            InetMultiaddress.fromString("/ip6/::/tcp/1234").expectNoErrors(),
-            InetMultiaddress.fromString("/ip6/fe80::/tcp/1234").expectNoErrors(),
-        )
-        assertFalse(AddressUtil.addressInList(InetMultiaddress.fromString("/ip6/fe80::1/tcp/1234").expectNoErrors(), multiaddresses))
-        assertTrue(AddressUtil.addressInList(InetMultiaddress.fromString("/ip4/0.0.0.0/tcp/1234").expectNoErrors(), multiaddresses))
+        val actual = AddressUtil.resolveUnspecifiedAddresses(unspec, iface).expectNoErrors()
+        assertInetMultiaddressEqual(spec, actual)
+
+        val ip4u = InetMultiaddress.fromString("/ip4/0.0.0.0").expectNoErrors()
+        val ip4i = InetMultiaddress.fromString("/ip4/1.2.3.4").expectNoErrors()
+
+        val ip6u = InetMultiaddress.fromString("/ip6/::").expectNoErrors()
+        val ip6i = InetMultiaddress.fromString("/ip6/::1").expectNoErrors()
+
+        assertErrorResult("failed to resolve: /ip4/0.0.0.0") { AddressUtil.resolveUnspecifiedAddress(ip4u, listOf(ip6i)) }
+        assertErrorResult("failed to resolve: /ip6/::") { AddressUtil.resolveUnspecifiedAddress(ip6u, listOf(ip4i)) }
+
+        assertErrorResult("failed to specify addresses: [/ip4/0.0.0.0]") { AddressUtil.resolveUnspecifiedAddresses(listOf(ip4u), listOf(ip6i)) }
+        assertErrorResult("failed to specify addresses: [/ip6/::]") { AddressUtil.resolveUnspecifiedAddresses(listOf(ip6u), listOf(ip4i)) }
     }
 
     companion object {

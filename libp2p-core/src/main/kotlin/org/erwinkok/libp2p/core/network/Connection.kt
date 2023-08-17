@@ -5,14 +5,12 @@ package org.erwinkok.libp2p.core.network
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.core.internal.ChunkBuffer
-import io.ktor.utils.io.core.readBytes
-import io.ktor.utils.io.core.writeFully
 import io.ktor.utils.io.pool.ObjectPool
+import io.ktor.utils.io.readFully
+import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import org.erwinkok.libp2p.core.base.AwaitableClosable
-import org.erwinkok.libp2p.core.util.buildPacket
-import org.erwinkok.libp2p.core.util.writeUnsignedVarInt
 import org.erwinkok.multiformat.multistream.Utf8Connection
 import org.erwinkok.multiformat.util.UVarInt
 import org.erwinkok.result.Err
@@ -35,17 +33,11 @@ interface Connection : Utf8Connection, AwaitableClosable, DisposableHandle {
             .map { it.toInt() }
             .map { wanted ->
                 try {
-                    val packet = input.readPacket(wanted)
-                    if (packet.remaining.toInt() != wanted) {
-                        val result = Err("Required $wanted bytes, but received ${packet.remaining}")
-                        packet.close()
-                        return result
-                    }
-                    val bytes = packet.readBytes()
+                    val bytes = ByteArray(wanted)
+                    input.readFully(bytes)
                     if (bytes.isEmpty() || Char(bytes[bytes.size - 1].toInt()) != '\n') {
                         return Err("message did not have trailing newline")
                     }
-                    packet.close()
                     return Ok(String(bytes).trim { it <= ' ' })
                 } catch (e: ClosedReceiveChannelException) {
                     return Err(Errors.EndOfStream)
@@ -54,14 +46,11 @@ interface Connection : Utf8Connection, AwaitableClosable, DisposableHandle {
     }
 
     override suspend fun writeUtf8(vararg messages: String): Result<Unit> {
-        val packet = buildPacket(pool) {
-            for (message in messages) {
-                val messageNewline = message + '\n'
-                writeUnsignedVarInt(messageNewline.length).getOrElse { return Err(it) }
-                writeFully(messageNewline.toByteArray())
-            }
+        for (message in messages) {
+            val messageNewline = message + '\n'
+            output.writeUnsignedVarInt(messageNewline.length).getOrElse { return Err(it) }
+            output.writeFully(messageNewline.toByteArray())
         }
-        output.writePacket(packet)
         output.flush()
         return Ok(Unit)
     }

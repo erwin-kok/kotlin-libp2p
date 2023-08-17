@@ -29,3 +29,5 @@ include(":libp2p-testing")
 include(":libp2p-transport-tcp")
 
 include(":examples")
+
+include(":test-plans")

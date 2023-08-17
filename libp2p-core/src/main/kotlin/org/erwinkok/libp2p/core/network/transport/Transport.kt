@@ -12,6 +12,7 @@ interface Transport : Closeable {
     val proxy: Boolean
     val protocols: List<Protocol>
     fun canDial(remoteAddress: InetMultiaddress): Boolean
+    fun canListen(bindAddress: InetMultiaddress): Boolean
     suspend fun dial(peerId: PeerId, remoteAddress: InetMultiaddress): Result<TransportConnection>
     fun listen(bindAddress: InetMultiaddress): Result<Listener>
 }

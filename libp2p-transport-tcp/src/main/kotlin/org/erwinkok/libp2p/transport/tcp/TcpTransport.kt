@@ -46,9 +46,14 @@ class TcpTransport private constructor(
         return remoteAddress.isValidTcpIp
     }
 
+    override fun canListen(bindAddress: InetMultiaddress): Boolean {
+        val hn = bindAddress.hostName ?: return false
+        return hn.isValid && bindAddress.networkProtocol == NetworkProtocol.TCP
+    }
+
     override suspend fun dial(peerId: PeerId, remoteAddress: InetMultiaddress): Result<TransportConnection> {
         if (!remoteAddress.isValidTcpIp) {
-            return Err("TcpTransport can only dial/listen to valid tcp addresses, not $remoteAddress")
+            return Err("TcpTransport can only dial to valid tcp addresses, not $remoteAddress")
         }
         val connectionScope = resourceManager.openConnection(Direction.DirOutbound, true, remoteAddress)
             .getOrElse {
@@ -76,8 +81,8 @@ class TcpTransport private constructor(
     }
 
     override fun listen(bindAddress: InetMultiaddress): Result<Listener> {
-        if (!isValidListenAddress(bindAddress)) {
-            return Err("TcpTransport can only dial/listen to valid tcp addresses, not $bindAddress")
+        if (!canListen(bindAddress)) {
+            return Err("TcpTransport can only listen to valid tcp addresses, not $bindAddress")
         }
         return bindAddress.toSocketAddress()
             .map { socketAddress ->
@@ -96,11 +101,6 @@ class TcpTransport private constructor(
     }
 
     override fun close() = Unit
-
-    private fun isValidListenAddress(bindAddress: InetMultiaddress): Boolean {
-        val hn = bindAddress.hostName ?: return false
-        return hn.isValid && bindAddress.networkProtocol == NetworkProtocol.TCP
-    }
 
     companion object TcpTransportFactory : TransportFactory {
         override fun create(upgrader: Upgrader, resourceManager: ResourceManager, dispatcher: CoroutineDispatcher): Result<Transport> {

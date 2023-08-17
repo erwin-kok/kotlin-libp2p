@@ -149,7 +149,7 @@ class SwarmConnection(
             multistreamMuxer.negotiate(stream)
                 .onFailure { e ->
                     val took = Duration.between(before, Instant.now())
-                    logger.error { "protocol mux failed: ${e.message} (took $took)" }
+                    logger.warn { "protocol mux failed: ${e.message} (took $took)" }
                     stream.reset()
                 }
                 .onSuccess { (_, protocol, handler): ProtocolHandlerInfo<Stream> ->

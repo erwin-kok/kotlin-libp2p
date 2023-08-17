@@ -11,7 +11,7 @@ import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
-import org.erwinkok.libp2p.core.network.address.NetworkInterface.resolveUnspecifiedAddresses
+import org.erwinkok.libp2p.core.network.address.AddressUtil.resolveUnspecifiedAddresses
 import org.erwinkok.libp2p.core.network.swarm.Swarm.Companion.ErrSwarmClosed
 import org.erwinkok.result.CombinedError
 import org.erwinkok.result.Err
@@ -53,10 +53,6 @@ class SwarmListener(
                     errors.recordError(ErrAlreadyListening)
                 } else {
                     startListener(address)
-                        .onSuccess {
-                            listeners[address] = it
-                            swarm.notifyAll { subscriber -> subscriber.listen(swarm, address) }
-                        }
                         .onFailure {
                             errors.recordError(it)
                         }
@@ -116,11 +112,11 @@ class SwarmListener(
         _context.complete()
     }
 
-    private fun startListener(address: InetMultiaddress): Result<Job> {
+    private fun startListener(address: InetMultiaddress): Result<Unit> {
         val listener = swarmTransport.transportForListening(address)
             .flatMap { transport -> transport.listen(address) }
             .getOrElse { return Err(it) }
-        logger.info { "Starting swarm-listener on: $address..." }
+        logger.info { "Starting swarm-listener on: ${listener.transportAddress}..." }
         val job = scope.launch(_context + CoroutineName("swarm-listener-$address")) {
             while (_context.isActive) {
                 listener.accept()
@@ -138,7 +134,9 @@ class SwarmListener(
                     }
             }
         }
-        return Ok(job)
+        listeners[listener.transportAddress] = job
+        swarm.notifyAll { subscriber -> subscriber.listen(swarm, listener.transportAddress) }
+        return Ok(Unit)
     }
 
     companion object {

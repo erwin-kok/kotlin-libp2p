@@ -16,5 +16,6 @@ dependencies {
     implementation(libs.buildscript.ktlint)
     implementation(libs.buildscript.protobuf)
     implementation(libs.buildscript.serialization)
+    implementation(libs.buildscript.shadow)
     implementation(libs.buildscript.testlogger)
 }
