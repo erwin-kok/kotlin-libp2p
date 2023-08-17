@@ -61,15 +61,6 @@ fun main() {
             transports {
                 tcp()
             }
-            peerstore {
-                gcInterval = 1.hours
-                keyStore {
-                    password = "APasswordThatIsAtLeast20CharactersLong"
-                    dek {
-                        salt = "W/SC6fnZfBIWdeAD3l+ClLpQtfICEtn+KYTUhfKq6d7l"
-                    }
-                }
-            }
             swarm {
                 dialTimeout = 10.minutes
                 listenAddresses {

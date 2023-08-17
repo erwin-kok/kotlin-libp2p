@@ -45,6 +45,8 @@ to each other. For this to work a few challenges have to be solved:
   obvious, because there are several nodes connected to each other. They all could have a different implementation with
   different capabilities and with different versions **In libp2p this is solved by multiformats**.
 
+- How to distribute content? In a client/server setup, this is almost trivial. If node A wants to send something to node B it ’tags’ the message with an ‘address’ or ‘phone-number’ and sends it to the server. Since the server knows B it forwards this message directly to B. In a P2P connection, however, all nodes are interconnected via a mesh and perhaps A does not have a direct connection to B but has an indirect connection via some intermediate nodes C, D and E. If A wants to send something to B it has to send it to C. C has to send it to D and so on until it reaches B. It has to find a ‘route’ through all the nodes from A to B. And, for efficiency reasons, C should not forward the message to all its peers, because this will lead to congestion; all messages are send to each and every node. Ideally, C should send the message only to a node that is the most optimal node in the route to B (This is not always achievable). **In libp2p this is solved using different pubsub mechanisms**.
+
 There already exists some P2P network protocols, but they lacked standardization. Libp2p standardizes they way nodes
 communicate to each other and has a solution for the above-mentioned issues (and more).
 
@@ -114,7 +116,7 @@ transport, include `libp2p-transport-tcp`, or if you want the mplex muxer includ
 In your code, first create a host:
 
 ```kotlin
-        val hostBuilder = host {
+val hostBuilder = host {
     identity(localIdentity)
     muxers {
         mplex()
@@ -124,15 +126,6 @@ In your code, first create a host:
     }
     transports {
         tcp()
-    }
-    peerstore {
-        gcInterval = 1.hours
-        keyStore {
-            password = "APasswordThatIsAtLeast20CharactersLong"
-            dek {
-                salt = "W/SC6fnZfBIWdeAD3l+ClLpQtfICEtn+KYTUhfKq6d7l"
-            }
-        }
     }
     swarm {
         dialTimeout = 10.minutes
@@ -156,7 +149,7 @@ The layout is hopefully clear: for example, the code above will use `tcp` as a t
 Then you can add a handler:
 
 ```kotlin
-    host.setStreamHandler(ProtocolId.of("/chat/1.0.0")) {
+host.setStreamHandler(ProtocolId.of("/chat/1.0.0")) {
     chatHandler(it)
 }
 ```
@@ -166,7 +159,7 @@ This means that if a peer connects and requests the `/chat/1.0.0` protocol, the 
 To call a peer and open a new stream, use the following code:
 
 ```kotlin
-    val stream = host.newStream(aPeerId, ProtocolId.of("/chat/1.0.0"))
+val stream = host.newStream(aPeerId, ProtocolId.of("/chat/1.0.0"))
     .getOrElse {
         logger.error { "Could not open chat stream with peer: ${errorMessage(it)}" }
         return@runBlocking

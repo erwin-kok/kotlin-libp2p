@@ -1,6 +1,6 @@
 [versions]
 kotlinx-coroutines = "1.7.3"
-kotlinx-atomicfu = "0.21.0"
+kotlinx-atomicfu = "0.22.0"
 kotlinx-serialization = "1.5.1"
 kotlin = "1.9.0"
 
@@ -10,8 +10,7 @@ ktlint-plugin = "10.3.0"
 protobuf-plugin = "0.9.2"
 testlogger-plugin = "3.2.0"
 
-caffeine = "3.1.7"
-mockk = "1.13.5"
+caffeine = "3.1.8"
 ipaddress = "5.4.0"
 jedis = "4.4.3"
 junit-jupiter = "5.10.0"
@@ -19,19 +18,19 @@ kerby-asn1 = "2.0.3"
 klaxon = "5.6"
 kotlin-logging = "3.0.5"
 ktor = "2.3.2"
-logback-classic = "1.4.8"
+logback-classic = "1.4.11"
+mockk = "1.13.7"
 multiformat = "1.1.0"
 noise-java = "1.0.0"
 protobuf = "3.22.0"
 reflections = "0.10.2"
 result-monad = "1.4.0"
 rocksdb = "8.3.2"
+shadow = "8.1.1"
 slf4j-api = "2.0.7"
 
 nexus-plugin = "1.2.0"
 versions-plugin = "0.47.0"
-
-shadow = "8.1.1"
 
 [libraries]
 # Libraries for the build system
