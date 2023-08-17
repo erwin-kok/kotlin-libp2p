@@ -115,7 +115,7 @@ class PingService(
             }
         launch(_context + CoroutineName("ping-service-$peerId")) {
             try {
-                while (_context.isActive && !isClosedForSend) {
+                while (_context.isActive && !isClosedForSend && !stream.input.isClosedForRead && !stream.output.isClosedForWrite) {
                     ping(stream)
                         .onSuccess {
                             host.peerstore.recordLatency(peerId, it)
