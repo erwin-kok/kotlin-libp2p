@@ -28,7 +28,6 @@ import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.errorMessage
 import org.erwinkok.result.getOrElse
-import org.erwinkok.result.map
 import org.erwinkok.result.mapBoth
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
@@ -124,16 +123,26 @@ class BasicHost(
                 stream.reset()
                 return Err(it)
             }
-        if (preferredProtocol != ProtocolId.Null) {
+        val selected = if (preferredProtocol != ProtocolId.Null) {
             stream.setProtocol(preferredProtocol)
             MultistreamMuxer.selectOneOf(mutableSetOf(preferredProtocol), stream)
         } else {
             MultistreamMuxer.selectOneOf(protocols.toSet(), stream)
-                .map { selected ->
+                .onSuccess { selected ->
                     stream.setProtocol(selected)
                     peerstore.addProtocols(peerId, mutableSetOf(selected))
                 }
         }
+        selected.mapBoth(
+            {
+                logger.debug { "Protocol $it selected for peer $peerId in newStream" }
+            },
+            {
+                logger.info { "Peer $peerId does not support any of the requested protocols ${protocols.joinToString()}" }
+                stream.reset()
+                return Err(it)
+            }
+        )
         return Ok(stream)
     }
 

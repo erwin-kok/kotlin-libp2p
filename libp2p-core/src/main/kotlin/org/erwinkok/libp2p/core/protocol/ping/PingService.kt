@@ -120,6 +120,7 @@ class PingService(
                         }
                         .onFailure {
                             logger.warn { "Error occurred: ${errorMessage(it)}" }
+                            stream.reset()
                             close()
                         }
                 }
@@ -129,6 +130,7 @@ class PingService(
             close()
         }
         awaitClose()
+        stream.close()
     }
 
     override fun close() {
@@ -138,7 +140,6 @@ class PingService(
     private suspend fun ping(stream: Stream): Result<Long> {
         stream.streamScope.reserveMemory(2 * PingSize, ReservationPriorityAlways)
             .getOrElse {
-                stream.reset()
                 return Err("error reserving memory for ping stream: ${errorMessage(it)}")
             }
 
