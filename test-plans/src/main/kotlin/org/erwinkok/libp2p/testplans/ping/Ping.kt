@@ -137,8 +137,9 @@ fun main() {
     }
 }
 
-private suspend fun listener(host: Host, redisClient: Jedis, testTimeout: Duration): Boolean {
+private suspend fun listener(scope: CoroutineScope, host: Host, redisClient: Jedis, testTimeout: Duration): Boolean {
     logger.info { "Configured as listener..." }
+    val pingService = PingService(scope, host)
     val hostAddress = host.addresses().firstOrNull()
     if (hostAddress == null) {
         logger.error { "Failed to get listen address" }
@@ -147,7 +148,8 @@ private suspend fun listener(host: Host, redisClient: Jedis, testTimeout: Durati
     val address = hostAddress.withPeerId(host.id).toString()
     redisClient.rpush("listenerAddr", address)
     delay(testTimeout)
-    return false
+    pingService.close()
+    return true
 }
 
 private suspend fun dialer(scope: CoroutineScope, host: Host, redisClient: Jedis, testTimeout: Duration): Boolean {

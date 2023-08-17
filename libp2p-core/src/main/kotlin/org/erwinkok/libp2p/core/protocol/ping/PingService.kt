@@ -10,7 +10,6 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -70,20 +69,25 @@ class PingService(
                 stream.reset()
                 return@withContext
             }
-
         val buffer = ByteBuffer.allocate(PingSize)
         while (scope.isActive && !stream.input.isClosedForRead && !stream.output.isClosedForWrite) {
-            buffer.clear()
-            val timeout = withTimeoutOrNull(pingTimeout) {
-                stream.input.readFully(buffer)
-                buffer.flip()
-                stream.output.writeFully(buffer)
-                stream.output.flush()
-            }
-            if (timeout == null) {
-                logger.debug { "Ping timeout with peer ${stream.connection.remoteIdentity.peerId}" }
+            try {
+                val timeout = withTimeoutOrNull(pingTimeout) {
+                    buffer.clear()
+                    stream.input.readFully(buffer)
+                    buffer.flip()
+                    stream.output.writeFully(buffer)
+                    stream.output.flush()
+                }
+                if (timeout == null) {
+                    logger.debug { "Ping timeout with peer ${stream.connection.remoteIdentity.peerId}" }
+                    stream.close()
+                }
+            } catch (e: Exception) {
+                // This is fine. The stream could be open and waiting for input in readFully.
+                // The peer can (and this is usual) close the stream. This will generate an
+                // exception, but this is not a protocol error.
                 stream.close()
-                scope.cancel()
             }
         }
         stream.streamScope.releaseMemory(PingSize)
@@ -142,7 +146,6 @@ class PingService(
             .getOrElse {
                 return Err("error reserving memory for ping stream: ${errorMessage(it)}")
             }
-
         val input = ByteArray(PingSize)
         val output = Random.nextBytes(PingSize)
         val elapsed = measureNanoTime {
