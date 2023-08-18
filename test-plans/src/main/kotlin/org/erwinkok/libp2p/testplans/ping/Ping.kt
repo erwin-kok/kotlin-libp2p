@@ -48,7 +48,7 @@ fun main() {
         val muxer = System.getenv("muxer") ?: "mplex"
         val isDialerString = System.getenv("is_dialer") ?: "true"
         val ip = System.getenv("ip") ?: "0.0.0.0"
-        val redisAddr = System.getenv("redis_addr") ?: "localhost:6379"
+        val redisAddr = System.getenv("redis_addr") ?: "redis:6379"
         val testTimeoutSeconds = System.getenv("test_timeout_seconds")
 
         val testTimeout = if (testTimeoutSeconds != null) {
