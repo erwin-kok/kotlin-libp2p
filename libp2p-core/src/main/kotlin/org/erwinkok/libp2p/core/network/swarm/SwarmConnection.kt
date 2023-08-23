@@ -1,8 +1,6 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.network.swarm
 
-import kotlinx.atomicfu.locks.ReentrantLock
-import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -11,6 +9,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
+import org.erwinkok.libp2p.core.base.closableLockedList
+import org.erwinkok.libp2p.core.base.withLock
 import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.RemoteIdentity
 import org.erwinkok.libp2p.core.network.ConnectionStatistics
@@ -49,15 +49,14 @@ class SwarmConnection(
     private val identifier: Long,
 ) : AwaitableClosable, NetworkConnection {
     private val _context = Job()
-    private val streamsLock = ReentrantLock()
-    private val _streams = mutableListOf<SwarmStream>()
+    private val _streams = closableLockedList<SwarmStream>()
     private val nextStreamId = AtomicLong(0)
 
     override val jobContext: Job get() = _context
     override val id: String
         get() = String.format("%s-%d", transportConnection.remoteIdentity.toString().substring(0, 10), identifier)
     override val streams: List<Stream>
-        get() = streamsLock.withLock { _streams.toList() }
+        get() = _streams.toList()
     override val localAddress: InetMultiaddress
         get() = transportConnection.localAddress
     override val localIdentity: LocalIdentity
@@ -105,7 +104,7 @@ class SwarmConnection(
     }
 
     fun removeStream(stream: SwarmStream) {
-        streamsLock.withLock {
+        _streams.withLock {
             transportConnection.statistic.numberOfStreams--
             _streams.remove(stream)
         }
@@ -134,7 +133,7 @@ class SwarmConnection(
     }
 
     private fun addStream(muxedStream: MuxedStream, direction: Direction, streamScope: StreamManagementScope): Result<Stream> {
-        streamsLock.withLock {
+        _streams.withLock {
             if (_context.isCancelled) {
                 muxedStream.reset()
                 logger.error { "SwarmConnection closed." }

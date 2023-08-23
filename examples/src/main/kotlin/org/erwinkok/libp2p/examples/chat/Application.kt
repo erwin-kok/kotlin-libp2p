@@ -92,7 +92,7 @@ fun main() {
             if (flow != null) {
                 launch {
                     flow.collect { pingResult ->
-                        println("Ping RTT: ${pingResult.rtt}")
+                        logger.info { "Ping RTT: ${pingResult.rtt}" }
                     }
                 }
             }

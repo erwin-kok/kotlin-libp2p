@@ -40,7 +40,7 @@ class PeerstoreConfig {
 
 class SwarmConfig {
     var dialers: Int = 4
-    var maxRetries: Int = 1
+    var maxRetries: Int = 3
     var dialTimeout = 15.seconds
     var backoffBase = 15.seconds
     var backoffCoefficient = 1.seconds
