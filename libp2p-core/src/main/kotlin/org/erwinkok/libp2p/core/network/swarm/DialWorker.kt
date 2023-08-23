@@ -144,7 +144,7 @@ internal class DialWorker(
             responseChannel.send(DialResponse(Ok(bestConnection)))
             return
         }
-        val timeout = withTimeoutOrNull(swarmConfig.dialTimeout) {
+        val connection = withTimeoutOrNull(swarmConfig.dialTimeout) {
             dialAddress(peerId, addressDial.address)
                 .toErrorIf(
                     { transportConnection ->
@@ -158,6 +158,11 @@ internal class DialWorker(
                 .flatMap {
                     networkPeer.addConnection(it, Direction.DirOutbound)
                 }
+        }
+        if (connection == null) {
+            connectFailure(addressDial, SwarmDialer.ErrDialTimeout)
+        } else {
+            connection
                 .onSuccess { networkConnection ->
                     addressDial.connection = networkConnection
                     responseChannel.send(DialResponse(Ok(networkConnection)))
@@ -166,20 +171,17 @@ internal class DialWorker(
                     connectFailure(addressDial, it)
                 }
         }
-        if (timeout == null) {
-            connectFailure(addressDial, SwarmDialer.ErrDialTimeout)
-        }
     }
 
     private suspend fun connectFailure(addressDial: AddressDial, error: Error) {
         val address = addressDial.address
-        val backoffTime = swarmConfig.backoffBase + swarmConfig.backoffCoefficient * addressDial.retries * addressDial.retries
-        if (backoffTime > swarmConfig.backoffMax) {
+        val retries = addressDial.retries + 1
+        if (retries >= swarmConfig.maxRetries) {
             logger.info { "Could not connect to Peer $peerId on address $address (${errorMessage(error)}). Giving up." }
             responseChannel.send(DialResponse(Err(dialError.combine())))
             trackedDials.remove(addressDial.address)
         } else {
-            val retries = addressDial.retries + 1
+            val backoffTime = swarmConfig.backoffBase + swarmConfig.backoffCoefficient * addressDial.retries * addressDial.retries
             logger.info { "Could not connect to Peer $peerId on address $address (${errorMessage(error)}). Retry $retries in $backoffTime" }
             if (error != SwarmDialer.ErrDialTimeout) {
                 dialError.recordError(addressDial.address, error)

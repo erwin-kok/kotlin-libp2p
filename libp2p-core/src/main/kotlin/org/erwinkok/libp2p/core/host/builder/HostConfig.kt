@@ -40,10 +40,10 @@ class PeerstoreConfig {
 
 class SwarmConfig {
     var dialers: Int = 4
-    var dialTimeout = 5.seconds
-    var backoffBase = 5.seconds
+    var maxRetries: Int = 1
+    var dialTimeout = 15.seconds
+    var backoffBase = 15.seconds
     var backoffCoefficient = 1.seconds
-    var backoffMax = 10.seconds
     val listenAddresses = mutableListOf<InetMultiAddressConstructor>()
 }
 

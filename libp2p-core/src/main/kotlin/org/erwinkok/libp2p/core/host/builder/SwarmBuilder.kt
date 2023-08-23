@@ -9,7 +9,7 @@ class SwarmBuilder(hostBuilder: HostBuilder) : BuilderPart(hostBuilder) {
     var dialTimeout by config.swarmConfig::dialTimeout
     var backoffBase by config.swarmConfig::backoffBase
     var backoffCoefficient by config.swarmConfig::backoffCoefficient
-    var backoffMax by config.swarmConfig::backoffMax
+    var maxRetries by config.swarmConfig::maxRetries
 
     @HostDsl
     fun listenAddresses(init: ListenAddressBuilder.() -> Unit) {

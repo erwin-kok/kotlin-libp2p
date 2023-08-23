@@ -7,10 +7,12 @@ import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.transport.Transport
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.resourcemanager.ResourceManager
+import org.erwinkok.multiformat.multistream.MultistreamMuxer
 import org.erwinkok.result.Result
 
 interface Network : AwaitableClosable {
     val peerstore: Peerstore
+    val multistreamMuxer: MultistreamMuxer<Stream>
     val localPeerId: PeerId
     val resourceManager: ResourceManager?
     fun addTransport(transport: Transport): Result<Unit>

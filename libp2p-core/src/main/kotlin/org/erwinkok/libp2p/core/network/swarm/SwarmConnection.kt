@@ -113,15 +113,24 @@ class SwarmConnection(
     }
 
     override fun toString(): String {
-        return "<SwarmConnection[${transportConnection.transport}] ${transportConnection.localAddress} (${transportConnection.localIdentity}) <-> ${transportConnection.remoteAddress} (${transportConnection.remoteIdentity.peerId})>"
+        return buildString {
+            append("<SwarmConnection[${transportConnection.transport}]")
+            append("${transportConnection.localAddress} (${transportConnection.localIdentity})")
+            append(" <-> ")
+            append("${transportConnection.remoteAddress} (${transportConnection.remoteIdentity.peerId})")
+            append(")>")
+            if (isClosed) {
+                append(" (CLOSED)")
+            }
+        }
     }
 
     override fun close() {
         logger.info { "Closing NetworkConnection $this" }
-        swarm.removeConnection(this)
         transportConnection.close()
         streams.forEach { it.reset() }
         _context.complete()
+        swarm.removeConnection(this)
     }
 
     private fun addStream(muxedStream: MuxedStream, direction: Direction, streamScope: StreamManagementScope): Result<Stream> {

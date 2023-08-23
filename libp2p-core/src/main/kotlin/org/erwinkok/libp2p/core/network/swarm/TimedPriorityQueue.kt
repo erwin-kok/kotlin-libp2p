@@ -100,6 +100,20 @@ internal class TimedPriorityQueue<T : TimedQueueElement>(
         _context.complete()
     }
 
+    override val isClosed: Boolean
+        get() = inputChannel.isClosedForReceive
+
+    override fun toString(): String {
+        val sb = StringBuilder()
+        if (isClosed) {
+            sb.append("closed")
+        } else {
+            sb.append("active")
+        }
+        sb.append(", pq=${priorityQueue.size}")
+        return sb.toString()
+    }
+
     // Try to read as many elements as possible and fill up the priority queue.
     private suspend fun receiveAndFillUpPriorityQueue() {
         while (!inputChannel.isClosedForReceive) {

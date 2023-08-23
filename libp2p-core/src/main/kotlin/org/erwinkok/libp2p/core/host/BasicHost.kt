@@ -38,7 +38,6 @@ private val logger = KotlinLogging.logger {}
 class BasicHost(
     val scope: CoroutineScope,
     override val network: Network,
-    override val multistreamMuxer: MultistreamMuxer<Stream> = MultistreamMuxer(),
     override val eventBus: EventBus = EventBus(),
     hostConfig: HostConfig = HostConfig(),
 ) : AwaitableClosable, Host {
@@ -57,6 +56,9 @@ class BasicHost(
 
     override val peerstore: Peerstore
         get() = network.peerstore
+
+    override val multistreamMuxer: MultistreamMuxer<Stream>
+        get() = network.multistreamMuxer
 
     init {
         updateLocalIpAddress()

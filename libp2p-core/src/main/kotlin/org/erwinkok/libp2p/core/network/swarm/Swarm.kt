@@ -38,9 +38,9 @@ class Swarm private constructor(
     override val localPeerId: PeerId,
     override val peerstore: Peerstore,
     override val resourceManager: ResourceManager,
+    override val multistreamMuxer: MultistreamMuxer<Stream>,
     private val eventBus: EventBus,
     private val connectionGater: ConnectionGater?,
-    private val multistreamMuxer: MultistreamMuxer<Stream>,
     swarmConfig: SwarmConfig,
 ) : AwaitableClosable, Network {
     private val _context = Job(scope.coroutineContext[Job])
@@ -220,9 +220,9 @@ class Swarm private constructor(
                     localPeerId,
                     peerstore,
                     resourceManager ?: NullResourceManager,
+                    multistreamMuxer,
                     eventBus,
                     connectionGater,
-                    multistreamMuxer,
                     swarmConfig ?: SwarmConfig(),
                 ),
             )

@@ -168,7 +168,6 @@ class HostBuilder {
         val host = BasicHost(
             coroutineScope,
             swarm,
-            multistreamMuxer,
             eventbus,
             config,
         )
