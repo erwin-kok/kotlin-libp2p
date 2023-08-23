@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.minutes
 
 class Peerstore private constructor(
     scope: CoroutineScope,
-    datastore: BatchingDatastore,
+    val datastore: BatchingDatastore,
     private val keyStore: KeyStore,
     private val addressStore: AddressStore,
     private val metricsStore: MetricsStore,
@@ -188,6 +188,7 @@ class Peerstore private constructor(
 
     override fun close() {
         addressStore.close()
+        datastore.close()
         _context.complete()
     }
 

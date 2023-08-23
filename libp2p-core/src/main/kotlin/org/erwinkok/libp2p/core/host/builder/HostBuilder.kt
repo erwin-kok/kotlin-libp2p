@@ -167,12 +167,10 @@ class HostBuilder {
 
         val host = BasicHost(
             coroutineScope,
-            localIdentity,
-            config,
             swarm,
-            peerstore,
             multistreamMuxer,
             eventbus,
+            config,
         )
 
         val upgrader = createUpgrader(coroutineScope, localIdentity, NullResourceManager)

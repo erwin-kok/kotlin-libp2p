@@ -35,10 +35,10 @@ private val logger = KotlinLogging.logger {}
 
 class Swarm private constructor(
     val scope: CoroutineScope,
-    private val eventBus: EventBus,
     override val localPeerId: PeerId,
     override val peerstore: Peerstore,
     override val resourceManager: ResourceManager,
+    private val eventBus: EventBus,
     private val connectionGater: ConnectionGater?,
     private val multistreamMuxer: MultistreamMuxer<Stream>,
     swarmConfig: SwarmConfig,
@@ -144,6 +144,7 @@ class Swarm private constructor(
         swarmDialer.close()
         swarmListener.close()
         swarmTransport.close()
+        peerstore.close()
         _context.complete()
     }
 
@@ -216,10 +217,10 @@ class Swarm private constructor(
             return Ok(
                 Swarm(
                     scope,
-                    eventBus,
                     localPeerId,
                     peerstore,
                     resourceManager ?: NullResourceManager,
+                    eventBus,
                     connectionGater,
                     multistreamMuxer,
                     swarmConfig ?: SwarmConfig(),

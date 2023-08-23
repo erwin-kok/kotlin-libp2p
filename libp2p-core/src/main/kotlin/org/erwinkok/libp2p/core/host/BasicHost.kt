@@ -37,12 +37,10 @@ private val logger = KotlinLogging.logger {}
 
 class BasicHost(
     val scope: CoroutineScope,
-    val localIdentity: LocalIdentity,
-    hostConfig: HostConfig,
     override val network: Network,
-    override val peerstore: Peerstore,
-    override val multistreamMuxer: MultistreamMuxer<Stream>,
-    override val eventBus: EventBus,
+    override val multistreamMuxer: MultistreamMuxer<Stream> = MultistreamMuxer(),
+    override val eventBus: EventBus = EventBus(),
+    hostConfig: HostConfig = HostConfig(),
 ) : AwaitableClosable, Host {
     private val _context = SupervisorJob(scope.coroutineContext[Job])
     private val addressMutex = ReentrantLock()
@@ -55,7 +53,10 @@ class BasicHost(
         get() = _context
 
     override val id: PeerId
-        get() = localIdentity.peerId
+        get() = network.localPeerId
+
+    override val peerstore: Peerstore
+        get() = network.peerstore
 
     init {
         updateLocalIpAddress()
@@ -162,10 +163,10 @@ class BasicHost(
     }
 
     private suspend fun dialPeer(peerId: PeerId): Result<Unit> {
-        logger.debug { "[$localIdentity] dialing $peerId" }
+        logger.debug { "[$id] dialing $peerId" }
         network.dialPeer(peerId)
-            .onSuccess { logger.debug { "[$localIdentity] finished dialing $peerId" } }
-            .onFailure { logger.error { "[$localIdentity] Error dialing host: ${errorMessage(it)}" } }
+            .onSuccess { logger.debug { "[$id] finished dialing $peerId" } }
+            .onFailure { logger.error { "[$id] Error dialing host: ${errorMessage(it)}" } }
         return Ok(Unit)
     }
 
@@ -197,7 +198,6 @@ class BasicHost(
     override fun close() {
         pingService?.close()
         eventBus.close()
-        peerstore.close()
         network.close()
         _context.complete()
     }
