@@ -19,8 +19,8 @@ internal class PingServiceTest {
     @Test
     fun testPing() = runTest {
         withContext(Dispatchers.Default) {
-            val h1 = BasicHost(this, SwarmTestBuilder.create(this))
-            val h2 = BasicHost(this, SwarmTestBuilder.create(this))
+            val h1 = BasicHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
+            val h2 = BasicHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
             val ps1 = PingService(this, h1)
             val ps2 = PingService(this, h2)
             h1.connect(AddressInfo.fromPeerIdAndAddresses(h2.id, h2.addresses())).expectNoErrors()

@@ -137,15 +137,12 @@ class HostBuilder {
         val localIdentity = createIdentity(peerstore)
             .getOrElse { return Err(it) }
 
-        peerstore.addLocalIdentity(localIdentity)
-            .onFailure { errors.recordError(it) }
-
         val eventbus = EventBus()
         val multistreamMuxer = MultistreamMuxer<Stream>()
 
         val swarmBuilder = Swarm.Builder(
             eventbus,
-            localIdentity.peerId,
+            localIdentity,
             peerstore,
             multistreamMuxer,
         )
@@ -179,6 +176,7 @@ class HostBuilder {
         return if (errors.hasErrors) {
             Err(errors.error())
         } else {
+            host.start()
             Ok(host)
         }
     }

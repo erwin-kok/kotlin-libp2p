@@ -36,7 +36,7 @@ class SwarmTestConfig(
 )
 
 object SwarmTestBuilder {
-    fun create(scope: CoroutineScope, config: SwarmTestConfig = SwarmTestConfig()): Swarm {
+    suspend fun create(scope: CoroutineScope, config: SwarmTestConfig = SwarmTestConfig()): Swarm {
         val pk = config.PrivateKey
         val privateKey = if (pk != null) {
             pk
@@ -48,7 +48,7 @@ object SwarmTestBuilder {
         val peerstore = Peerstore.create(scope, MapDatastore(scope), null, config.TimeProvider).expectNoErrors()
         val eventBus = config.EventBus ?: EventBus()
         val multistreamMuxer = MultistreamMuxer<Stream>()
-        val swarmBuilder = Swarm.builder(eventBus, localIdentity.peerId, peerstore, multistreamMuxer)
+        val swarmBuilder = Swarm.builder(eventBus, localIdentity, peerstore, multistreamMuxer)
         val cg = config.ConnectionGater
         if (cg != null) {
             swarmBuilder.withConnectionGater(cg)

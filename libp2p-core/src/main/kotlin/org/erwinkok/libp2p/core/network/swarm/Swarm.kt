@@ -9,6 +9,7 @@ import kotlinx.coroutines.Job
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
+import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.builder.SwarmConfig
 import org.erwinkok.libp2p.core.network.Connectedness
@@ -29,6 +30,7 @@ import org.erwinkok.result.Error
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.flatMap
+import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
 
 private val logger = KotlinLogging.logger {}
@@ -190,7 +192,7 @@ class Swarm private constructor(
 
     class Builder(
         private val eventBus: EventBus,
-        private val localPeerId: PeerId,
+        private val localIdentity: LocalIdentity,
         private val peerstore: Peerstore,
         private val multistreamMuxer: MultistreamMuxer<Stream>,
     ) {
@@ -213,11 +215,13 @@ class Swarm private constructor(
             return this
         }
 
-        fun build(scope: CoroutineScope): Result<Swarm> {
+        suspend fun build(scope: CoroutineScope): Result<Swarm> {
+            peerstore.addLocalIdentity(localIdentity)
+                .onFailure { return Err(it) }
             return Ok(
                 Swarm(
                     scope,
-                    localPeerId,
+                    localIdentity.peerId,
                     peerstore,
                     resourceManager ?: NullResourceManager,
                     multistreamMuxer,
@@ -234,8 +238,8 @@ class Swarm private constructor(
         val ErrDialToSelf = Error("dial to self attempted")
         val ErrGaterDisallowedConnection = Error("gater disallows connection to peer")
 
-        fun builder(eventBus: EventBus, localPeerId: PeerId, peerstore: Peerstore, multistreamMuxer: MultistreamMuxer<Stream>): Builder {
-            return Builder(eventBus, localPeerId, peerstore, multistreamMuxer)
+        fun builder(eventBus: EventBus, localIdentity: LocalIdentity, peerstore: Peerstore, multistreamMuxer: MultistreamMuxer<Stream>): Builder {
+            return Builder(eventBus, localIdentity, peerstore, multistreamMuxer)
         }
     }
 }

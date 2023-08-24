@@ -59,4 +59,5 @@ class HostConfig {
     var connectionGater: ConnectionGater? = null
     var resourceManager: ResourceManager? = null
     var datastore: BatchingDatastore? = null
+    var disableSignedPeerRecord: Boolean = false
 }
