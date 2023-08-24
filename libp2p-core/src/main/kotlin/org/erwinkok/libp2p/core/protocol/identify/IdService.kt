@@ -7,6 +7,8 @@ package org.erwinkok.libp2p.core.protocol.identify
 import com.google.protobuf.ByteString
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.writeFully
+import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -79,7 +81,8 @@ class IdService(
     private val _context = Job(scope.coroutineContext[Job])
     private val triggerPushes = Channel<Unit>(RENDEZVOUS)
     private val setupCompleted = Semaphore(1, 1)
-    private val snapshot = IdentifySnapshot(disableSignedPeerRecord)
+    private val currentSnapshotLock = ReentrantLock()
+    private var currentSnapshot = IdentifySnapshot(0L, setOf(), listOf(), null)
     private var metricsTracer: MetricsTracer? = null
     private val connectionsMutex = Mutex()
     private val connections = mutableMapOf<NetworkConnection, ConnectionEntry>()
@@ -199,15 +202,6 @@ class IdService(
         }
     }
 
-    private suspend fun updateSnapshot(): Boolean {
-        val record = if (!disableSignedPeerRecord) {
-            host.peerstore.getPeerRecord(host.id)
-        } else {
-            null
-        }
-        return snapshot.update(host.addresses(), host.multistreamMuxer.protocols(), record)
-    }
-
     private suspend fun sendPushes() {
         val conns = connectionsMutex.withLock {
             this.connections.entries.filter { it.value.pushSupport == PushSupport.IdentifyPushSupported || it.value.pushSupport == PushSupport.IdentifyPushSupportUnknown }.map { it.key }
@@ -219,8 +213,7 @@ class IdService(
                 this.connections[connection]
             }
             if (entry != null) {
-                // TODO: Lock
-                val snapshot = snapshot
+                val snapshot = currentSnapshotLock.withLock { currentSnapshot }
                 if (entry.sequence >= snapshot.sequence) {
                     logger.debug { "already sent this snapshot ${snapshot.sequence} to peer ${connection.remoteIdentity}" }
                 } else {
@@ -283,13 +276,12 @@ class IdService(
                 return Err(message)
             }
 
-        // TODO: Lock
-        val snapshot = snapshot
+        val snapshot = currentSnapshotLock.withLock { currentSnapshot }
 
         logger.debug { "sending snapshot, sequence=${snapshot.sequence}, protocols=[${snapshot.protocols.joinToString(", ")}], addresses=[${snapshot.addresses.joinToString(", ")}]" }
 
-        val messageBuilder = createBaseIdentifyResponse(stream)
-        val record = snapshot.getSignedRecord()
+        val messageBuilder = createBaseIdentifyResponse(stream, snapshot)
+        val record = getSignedRecord(snapshot)
         if (record != null) {
             messageBuilder.signedPeerRecord = ByteString.copyFrom(record)
         }
@@ -390,6 +382,25 @@ class IdService(
         return Err("Too many messages in identify")
     }
 
+    private suspend fun updateSnapshot(): Boolean {
+        val addresses = host.addresses()
+        val protocols = host.multistreamMuxer.protocols()
+        val record = if (!disableSignedPeerRecord) {
+            host.peerstore.getPeerRecord(host.id)
+        } else {
+            null
+        }
+        currentSnapshotLock.withLock {
+            val snapshot = IdentifySnapshot(currentSnapshot.sequence + 1, protocols.toSet(), addresses.toList(), record)
+            if (currentSnapshot == snapshot) {
+                return false
+            }
+            currentSnapshot = snapshot
+            logger.debug { "updating snapshot $snapshot" }
+            return true
+        }
+    }
+
     private suspend fun writeChunkedIdentifyMessage(stream: Stream, identify: DbIdentify.Identify) {
         val bytes = identify.toByteArray()
         if (!identify.hasSignedPeerRecord() && bytes.size <= LegacyIdSize) {
@@ -418,7 +429,7 @@ class IdService(
         stream.output.flush()
     }
 
-    private suspend fun createBaseIdentifyResponse(stream: Stream): DbIdentify.Identify.Builder {
+    private suspend fun createBaseIdentifyResponse(stream: Stream, snapshot: IdentifySnapshot): DbIdentify.Identify.Builder {
         val identifyBuilder = DbIdentify.Identify.newBuilder()
 
         val connection = stream.connection
@@ -465,6 +476,18 @@ class IdService(
         identifyBuilder.protocolVersion = LibP2PVersion
         identifyBuilder.agentVersion = userAgent
         return identifyBuilder
+    }
+
+    private fun getSignedRecord(snapshot: IdentifySnapshot): ByteArray? {
+        val r = snapshot.record
+        if (disableSignedPeerRecord || r == null) {
+            return null
+        }
+        return r.marshal()
+            .getOrElse {
+                logger.error { "failed to marshal signed record: ${errorMessage(it)}" }
+                return null
+            }
     }
 
     private fun diff(a: Set<ProtocolId>, b: Set<ProtocolId>): Tuple2<Set<ProtocolId>, Set<ProtocolId>> {

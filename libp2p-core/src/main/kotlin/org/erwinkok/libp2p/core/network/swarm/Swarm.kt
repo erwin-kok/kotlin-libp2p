@@ -10,6 +10,8 @@ import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
 import org.erwinkok.libp2p.core.host.LocalIdentity
+import org.erwinkok.libp2p.core.host.Option
+import org.erwinkok.libp2p.core.host.Options
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.builder.SwarmConfig
 import org.erwinkok.libp2p.core.network.Connectedness
@@ -35,6 +37,15 @@ import org.erwinkok.result.onSuccess
 
 private val logger = KotlinLogging.logger {}
 
+fun Options<Swarm>.withConnectionGater(bla: ConnectionGater): Options<Swarm> {
+    list.add { it.bla = bla }
+    return this
+}
+
+fun Option<Swarm>.withConnectionGater(bla: ConnectionGater): Option<Swarm> {
+    return { it.bla = bla }
+}
+
 class Swarm private constructor(
     val scope: CoroutineScope,
     override val localPeerId: PeerId,
@@ -52,6 +63,8 @@ class Swarm private constructor(
     private val peers = ConcurrentMap<PeerId, NetworkPeer>()
     private val subscribersLock = ReentrantLock()
     private val subscribers = mutableListOf<Subscriber>()
+
+    internal var bla: ConnectionGater? = null
 
     override val jobContext: Job
         get() = _context
