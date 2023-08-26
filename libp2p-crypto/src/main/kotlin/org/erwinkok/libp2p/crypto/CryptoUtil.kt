@@ -16,9 +16,8 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 
 object CryptoUtil {
-    private val sha256Digest = MessageDigest.getInstance("SHA-256")
-
     fun digestSha256(input: ByteArray): ByteArray {
+        val sha256Digest = MessageDigest.getInstance("SHA-256")
         return sha256Digest.digest(input)
     }
 

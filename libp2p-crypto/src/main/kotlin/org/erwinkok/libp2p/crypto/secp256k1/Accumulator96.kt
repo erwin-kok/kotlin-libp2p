@@ -58,6 +58,7 @@ class Accumulator96(private var n0: UInt, private var n1: UInt, private var n2: 
         // improve the readability of the code.
         private const val uint32Mask = 0xffffffffuL
 
-        val Zero = Accumulator96(0u, 0u, 0u)
+        val Zero: Accumulator96
+            get() = Accumulator96(0u, 0u, 0u)
     }
 }

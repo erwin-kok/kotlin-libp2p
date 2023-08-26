@@ -14,7 +14,7 @@ import java.security.SecureRandom
 // PrivateKey provides facilities for working with secp256k1 private keys within
 // this package and includes functionality such as serializing and parsing them
 // as well as computing their associated public key.
-class Secp256k1PrivateKey(var key: ModNScalar) : PrivateKey(Crypto.KeyType.Secp256k1) {
+class Secp256k1PrivateKey(val key: ModNScalar) : PrivateKey(Crypto.KeyType.Secp256k1) {
     private val _secp256k1PublicKey: Secp256k1PublicKey
 
     init {
