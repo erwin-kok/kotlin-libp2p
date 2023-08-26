@@ -41,7 +41,7 @@ class Secp256k1PrivateKey(var key: ModNScalar) : PrivateKey(Crypto.KeyType.Secp2
         get() = _secp256k1PublicKey
 
     override fun sign(data: ByteArray): Result<ByteArray> {
-        val hash = CryptoUtil.sha256Digest.digest(data)
+        val hash = CryptoUtil.digestSha256(data)
         val sig = Secp256k1Signature.signRFC6979(this, hash)._1
         return Ok(sig.serialize())
     }

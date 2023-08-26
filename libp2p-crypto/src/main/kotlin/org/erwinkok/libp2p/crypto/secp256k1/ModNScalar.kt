@@ -61,7 +61,7 @@ import kotlin.math.min
 // that should typically be avoided when possible as conversion to big.Ints
 // requires allocations, is not constant time, and is slower when working modulo
 // the group order.
-class ModNScalar internal constructor(l0: UInt, l1: UInt, l2: UInt, l3: UInt, l4: UInt, l5: UInt, l6: UInt, l7: UInt) {
+class ModNScalar internal constructor(private val _n0: UInt, private val _n1: UInt, private val _n2: UInt, private val _n3: UInt, private val _n4: UInt, private val _n5: UInt, private val _n6: UInt, private val _n7: UInt) {
     // The scalar is represented as 8 32-bit integers in base 2^32.
     //
     // The following depicts the internal representation:
@@ -87,25 +87,6 @@ class ModNScalar internal constructor(l0: UInt, l1: UInt, l2: UInt, l3: UInt, l4
     // 	n[1] * 2^(32*1) = 2^10 * 2^32  = 2^42
     // 	n[0] * 2^(32*0) = 1    * 2^0   = 1
     // 	Sum: 0 + 0 + ... + 2^87 + 2^42 + 1 = 2^87 + 2^42 + 1
-    private val _n0: UInt
-    private val _n1: UInt
-    private val _n2: UInt
-    private val _n3: UInt
-    private val _n4: UInt
-    private val _n5: UInt
-    private val _n6: UInt
-    private val _n7: UInt
-
-    init {
-        this._n0 = l0
-        this._n1 = l1
-        this._n2 = l2
-        this._n3 = l3
-        this._n4 = l4
-        this._n5 = l5
-        this._n6 = l6
-        this._n7 = l7
-    }
 
     val n: UIntArray
         get() = uintArrayOf(_n0, _n1, _n2, _n3, _n4, _n5, _n6, _n7)

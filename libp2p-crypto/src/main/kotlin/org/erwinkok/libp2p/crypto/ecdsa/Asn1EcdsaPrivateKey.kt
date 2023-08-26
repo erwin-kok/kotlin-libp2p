@@ -16,7 +16,7 @@ import org.erwinkok.result.errorMessage
 import org.erwinkok.result.getOrElse
 import java.io.IOException
 
-data class Asn1EcdsaPrivateKey(val version: Int, val privateKey: ByteArray, var namedCurveOID: String, val publicKey: ByteArray) {
+data class Asn1EcdsaPrivateKey(val version: Int, val privateKey: ByteArray, val namedCurveOID: String, val publicKey: ByteArray) {
     fun marshal(): Result<ByteArray> {
         return try {
             val sequence = Asn1Sequence()

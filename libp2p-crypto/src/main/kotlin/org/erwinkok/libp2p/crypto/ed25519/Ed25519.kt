@@ -1,7 +1,6 @@
 // Copyright (c) 2022-2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.crypto.ed25519
 
-import mu.KotlinLogging
 import org.erwinkok.libp2p.crypto.KeyPair
 import org.erwinkok.libp2p.crypto.PrivateKey
 import org.erwinkok.libp2p.crypto.PublicKey
@@ -11,11 +10,8 @@ import org.erwinkok.result.Result
 import org.erwinkok.result.errorMessage
 import org.erwinkok.result.map
 import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
 import java.security.SecureRandom
 import java.util.Arrays
-
-private val logger = KotlinLogging.logger {}
 
 object Ed25519 {
     // PublicKeySize is the size, in bytes, of public keys as used in this package.
@@ -30,8 +26,6 @@ object Ed25519 {
     // SeedSize is the size, in bytes, of private key seeds. These are the private key representations used by RFC 8032.
     private const val SEED_SIZE = 32
 
-    private val sha512: MessageDigest by lazy { init512Digest() }
-
     fun generateKeyPair(secureRandom: SecureRandom = SecureRandom()): Result<KeyPair> {
         val seed = ByteArray(SEED_SIZE)
         secureRandom.nextBytes(seed)
@@ -44,6 +38,7 @@ object Ed25519 {
     }
 
     fun generatePrivateKey(seed: ByteArray): Result<ByteArray> {
+        val sha512 = MessageDigest.getInstance("SHA-512")
         val h = sha512.digest(seed)
         val s = Scalar.setBytesWithClamping(Arrays.copyOf(h, 32))
         val a = Point.scalarBaseMult(s)
@@ -95,6 +90,7 @@ object Ed25519 {
         if (privateKey.size != PRIVATE_KEY_SIZE) {
             return Err("ed25519: bad private key length: ${privateKey.size}")
         }
+        val sha512 = MessageDigest.getInstance("SHA-512")
         val signature = ByteArray(SIGNATURE_SIZE)
         val seed = privateKey.copyOfRange(0, SEED_SIZE)
         val publicKey = privateKey.copyOfRange(SEED_SIZE, privateKey.size)
@@ -123,6 +119,7 @@ object Ed25519 {
             if (signature.size != SIGNATURE_SIZE || signature[63].toInt() and 224 != 0) {
                 return Ok(false)
             }
+            val sha512 = MessageDigest.getInstance("SHA-512")
             val pointA = Point(publicKey)
             val r = signature.copyOfRange(0, 32)
             val s = signature.copyOfRange(32, SIGNATURE_SIZE)
@@ -139,15 +136,6 @@ object Ed25519 {
             return Ok(pR.bytes().contentEquals(r))
         } catch (e: NumberFormatException) {
             return Err(errorMessage(e))
-        }
-    }
-
-    private fun init512Digest(): MessageDigest {
-        try {
-            return MessageDigest.getInstance("SHA-512")
-        } catch (e: NoSuchAlgorithmException) {
-            logger.error(e) { "Could not find algorithm: ${errorMessage(e)}" }
-            throw e
         }
     }
 }
