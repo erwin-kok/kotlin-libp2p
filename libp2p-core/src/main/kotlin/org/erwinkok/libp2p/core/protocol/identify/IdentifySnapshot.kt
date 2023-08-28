@@ -13,7 +13,7 @@ class IdentifySnapshot(
     val record: Envelope? = null
 ) {
     override fun toString(): String {
-        return "snapshot: $sequence (${protocols.joinToString()}, ${addresses.joinToString()})"
+        return "snapshot: $sequence (protos: ${protocols.joinToString()}) (addrs: ${addresses.joinToString()}))"
     }
 
     override fun equals(other: Any?): Boolean {

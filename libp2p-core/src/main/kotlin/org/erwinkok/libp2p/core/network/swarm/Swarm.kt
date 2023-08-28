@@ -165,9 +165,10 @@ class Swarm private constructor(
 
     internal fun removeConnection(swarmConnection: SwarmConnection) {
         getPeer(swarmConnection.remoteIdentity.peerId)?.removeConnection(swarmConnection)
+        notifyAll { subscriber -> subscriber.disconnected(this, swarmConnection) }
     }
 
-    internal fun bestConnectionToPeer(peerId: PeerId): SwarmConnection? {
+    private fun bestConnectionToPeer(peerId: PeerId): SwarmConnection? {
         return getPeer(peerId)?.bestConnectionToPeer()
     }
 

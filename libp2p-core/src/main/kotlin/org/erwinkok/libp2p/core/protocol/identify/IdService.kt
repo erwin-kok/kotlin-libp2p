@@ -18,6 +18,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.RENDEZVOUS
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -29,7 +30,7 @@ import org.erwinkok.libp2p.core.event.EvtLocalProtocolsUpdated
 import org.erwinkok.libp2p.core.event.EvtPeerIdentificationCompleted
 import org.erwinkok.libp2p.core.event.EvtPeerIdentificationFailed
 import org.erwinkok.libp2p.core.event.EvtPeerProtocolsUpdated
-import org.erwinkok.libp2p.core.host.BasicHost
+import org.erwinkok.libp2p.core.host.Host
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.RemoteIdentity
 import org.erwinkok.libp2p.core.identify.pb.DbIdentify
@@ -74,7 +75,7 @@ private val logger = KotlinLogging.logger {}
 
 class IdService(
     private val scope: CoroutineScope,
-    private val host: BasicHost,
+    private val host: Host,
     private val userAgent: String = DefaultUserAgent,
     private val disableSignedPeerRecord: Boolean = false,
 ) : AwaitableClosable, Subscriber {
@@ -180,7 +181,7 @@ class IdService(
     }
 
     override fun connected(network: Network, connection: NetworkConnection) {
-        scope.launch(_context + CoroutineName("id-service-connected")) {
+        runBlocking {
             connectionsMutex.withLock {
                 addConnectionWithLock(connection)
             }
@@ -188,13 +189,13 @@ class IdService(
     }
 
     override fun disconnected(network: Network, connection: NetworkConnection) {
-        scope.launch(_context + CoroutineName("id-service-disconnected")) {
+        runBlocking {
             connectionsMutex.withLock {
                 connections.remove(connection)
             }
             if (host.network.connectedness(connection.remoteIdentity.peerId) != Connectedness.Connected) {
                 // Last disconnect.
-                // Undo the setting of addresses to peer.ConnectedAddrTTL we did
+                // Undo the setting of addresses to ConnectedAddrTTL we did
                 addressMutex.withLock {
                     host.peerstore.updateAddresses(connection.remoteIdentity.peerId, ConnectedAddrTTL, RecentlyConnectedAddrTTL)
                 }
@@ -263,7 +264,7 @@ class IdService(
         handleIdentifyResponse(stream, true)
     }
 
-    private suspend fun handleIdentifyRequest(stream: Stream) {
+    internal suspend fun handleIdentifyRequest(stream: Stream) {
         sendIdentifyResponse(stream, false)
     }
 
@@ -396,7 +397,7 @@ class IdService(
                 return false
             }
             currentSnapshot = snapshot
-            logger.debug { "updating snapshot $snapshot" }
+            logger.debug { "updating $snapshot" }
             return true
         }
     }
