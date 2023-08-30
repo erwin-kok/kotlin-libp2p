@@ -6,7 +6,6 @@ import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
@@ -18,6 +17,7 @@ import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.NetworkConnection
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.StreamResetException
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
 import org.erwinkok.libp2p.core.network.transport.TransportConnection
 import org.erwinkok.libp2p.core.resourcemanager.ConnectionScope
@@ -80,14 +80,18 @@ class SwarmConnection(
 
     init {
         scope.launch(_context + CoroutineName("swarm-connection-$id")) {
-            while (isActive && !transportConnection.isClosed) {
-                transportConnection.acceptStream()
-                    .flatMap { muxedStream ->
-                        resourceManager.openStream(remoteIdentity.peerId, Direction.DirInbound)
-                            .flatMap { streamScope -> addStream(muxedStream, Direction.DirInbound, streamScope) }
-                            .onSuccess { stream -> handleStream(stream) }
-                            .onFailure { muxedStream.reset() }
-                    }
+            while (!transportConnection.isClosed) {
+                try {
+                    transportConnection.acceptStream()
+                        .flatMap { muxedStream ->
+                            resourceManager.openStream(remoteIdentity.peerId, Direction.DirInbound)
+                                .flatMap { streamScope -> addStream(muxedStream, Direction.DirInbound, streamScope) }
+                                .onSuccess { stream -> handleStream(stream) }
+                        }
+                } catch (e: StreamResetException) {
+                    // The stream was reset. That's fine here.
+                    // We just continue accepting and handling a new stream.
+                }
             }
         }.invokeOnCompletion {
             close()
@@ -160,11 +164,13 @@ class SwarmConnection(
                         }
                     } else {
                         logger.warn { "no handler registered for $protocol" }
+                        stream.reset()
                     }
                 }
         }
         if (result == null) {
             logger.warn { "negotiation timeout in when determining protocol" }
+            stream.reset()
         }
     }
 
