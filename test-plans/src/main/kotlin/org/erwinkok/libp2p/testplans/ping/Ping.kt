@@ -140,6 +140,11 @@ fun main() {
 private suspend fun listener(scope: CoroutineScope, host: Host, redisClient: Jedis, testTimeout: Duration): Boolean {
     logger.info { "Configured as listener..." }
     val pingService = PingService(scope, host)
+    // Temporary implementation until the issue around the identify protocol is solved (next release).
+    // This temporary implementation accepts an identify stream, and immediately resets it.
+    host.setStreamHandler(ProtocolId.of("/ipfs/id/1.0.0")) { stream ->
+        stream.reset()
+    }
     val hostAddress = host.addresses().firstOrNull()
     if (hostAddress == null) {
         logger.error { "Failed to get listen address" }
