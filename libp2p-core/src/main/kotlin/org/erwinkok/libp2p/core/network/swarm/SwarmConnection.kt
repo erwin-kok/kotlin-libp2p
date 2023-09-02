@@ -4,9 +4,7 @@ package org.erwinkok.libp2p.core.network.swarm
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.base.closableLockedList
@@ -18,13 +16,13 @@ import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.NetworkConnection
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.StreamHandler
+import org.erwinkok.libp2p.core.network.StreamResetException
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
 import org.erwinkok.libp2p.core.network.transport.TransportConnection
 import org.erwinkok.libp2p.core.resourcemanager.ConnectionScope
 import org.erwinkok.libp2p.core.resourcemanager.ResourceManager
 import org.erwinkok.libp2p.core.resourcemanager.StreamManagementScope
-import org.erwinkok.multiformat.multistream.MultistreamMuxer
-import org.erwinkok.multiformat.multistream.ProtocolHandlerInfo
 import org.erwinkok.result.Err
 import org.erwinkok.result.Error
 import org.erwinkok.result.Ok
@@ -33,7 +31,6 @@ import org.erwinkok.result.flatMap
 import org.erwinkok.result.map
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
-import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration.Companion.minutes
@@ -41,11 +38,11 @@ import kotlin.time.Duration.Companion.minutes
 private val logger = KotlinLogging.logger {}
 
 class SwarmConnection(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val transportConnection: TransportConnection,
     private val swarm: Swarm,
     private val resourceManager: ResourceManager,
-    private val multistreamMuxer: MultistreamMuxer<Stream>,
+    private val streamHandler: StreamHandler?,
     private val identifier: Long,
 ) : AwaitableClosable, NetworkConnection {
     private val _context = Job()
@@ -79,14 +76,24 @@ class SwarmConnection(
 
     init {
         scope.launch(_context + CoroutineName("swarm-connection-$id")) {
-            while (isActive && !transportConnection.isClosed) {
-                transportConnection.acceptStream()
-                    .flatMap { muxedStream ->
-                        resourceManager.openStream(remoteIdentity.peerId, Direction.DirInbound)
-                            .flatMap { streamScope -> addStream(muxedStream, Direction.DirInbound, streamScope) }
-                            .onSuccess { stream -> handleStream(stream) }
-                            .onFailure { muxedStream.reset() }
-                    }
+            while (!transportConnection.isClosed) {
+                try {
+                    transportConnection.acceptStream()
+                        .onSuccess { muxedStream ->
+                            val sh = streamHandler
+                            if (sh != null) {
+                                resourceManager.openStream(remoteIdentity.peerId, Direction.DirInbound)
+                                    .flatMap { streamScope -> addStream(muxedStream, Direction.DirInbound, streamScope) }
+                                    .onSuccess { stream -> sh(stream) }
+                            } else {
+                                logger.warn { "No StreamHandler registered. Not able to manage stream. Reset." }
+                                muxedStream.reset()
+                            }
+                        }
+                } catch (e: StreamResetException) {
+                    // The stream was reset. That's fine here.
+                    // We just continue accepting and handling a new stream.
+                }
             }
         }.invokeOnCompletion {
             close()
@@ -103,7 +110,7 @@ class SwarmConnection(
             }
     }
 
-    fun removeStream(stream: SwarmStream) {
+    private fun removeStream(stream: SwarmStream) {
         _streams.withLock {
             transportConnection.statistic.numberOfStreams--
             _streams.remove(stream)
@@ -148,31 +155,6 @@ class SwarmConnection(
             statistics.numberOfStreams++
             _streams.add(stream)
             return Ok(stream)
-        }
-    }
-
-    private suspend fun handleStream(stream: Stream) {
-        val before = Instant.now()
-        val result = withTimeoutOrNull(NegotiationTimeout) {
-            multistreamMuxer.negotiate(stream)
-                .onFailure { e ->
-                    val took = Duration.between(before, Instant.now())
-                    logger.warn { "protocol mux failed: ${e.message} (took $took)" }
-                    stream.reset()
-                }
-                .onSuccess { (_, protocol, handler): ProtocolHandlerInfo<Stream> ->
-                    stream.setProtocol(protocol)
-                    if (handler != null) {
-                        scope.launch(_context + CoroutineName("swarm-stream-${stream.id} ($protocol)")) {
-                            handler(protocol, stream)
-                        }
-                    } else {
-                        logger.warn { "no handler registered for $protocol" }
-                    }
-                }
-        }
-        if (result == null) {
-            logger.warn { "negotiation timeout in when determining protocol" }
         }
     }
 

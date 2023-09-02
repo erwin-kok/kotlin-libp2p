@@ -1,9 +1,12 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.host
 
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
@@ -11,12 +14,15 @@ import org.erwinkok.libp2p.core.event.EvtLocalProtocolsUpdated
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.StreamHandler
+import org.erwinkok.libp2p.core.network.swarm.SwarmConnection
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.PermanentAddrTTL
 import org.erwinkok.libp2p.core.record.AddressInfo
 import org.erwinkok.libp2p.core.record.Envelope
 import org.erwinkok.libp2p.core.record.PeerRecord
 import org.erwinkok.multiformat.multistream.MultistreamMuxer
+import org.erwinkok.multiformat.multistream.ProtocolHandlerInfo
 import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.Err
 import org.erwinkok.result.Ok
@@ -27,6 +33,8 @@ import org.erwinkok.result.getOrElse
 import org.erwinkok.result.map
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
+import java.time.Duration
+import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
 
@@ -46,8 +54,11 @@ class BlankHost private constructor(
     override val peerstore: Peerstore
         get() = network.peerstore
 
-    override val multistreamMuxer: MultistreamMuxer<Stream>
-        get() = network.multistreamMuxer
+    override val multistreamMuxer = MultistreamMuxer<Stream>()
+
+    init {
+        network.streamHandler = ::handleStream
+    }
 
     override fun addresses(): List<InetMultiaddress> {
         val addresses = network.interfaceListenAddresses()
@@ -110,6 +121,33 @@ class BlankHost private constructor(
         eventBus.close()
         network.close()
         _context.complete()
+    }
+
+    private suspend fun handleStream(stream: Stream) {
+        val before = Instant.now()
+        val result = withTimeoutOrNull(SwarmConnection.NegotiationTimeout) {
+            multistreamMuxer.negotiate(stream)
+                .onFailure { e ->
+                    val took = Duration.between(before, Instant.now())
+                    logger.warn { "protocol mux failed: ${e.message} (took $took)" }
+                    stream.reset()
+                }
+                .onSuccess { (_, protocol, handler): ProtocolHandlerInfo<Stream> ->
+                    stream.setProtocol(protocol)
+                    if (handler != null) {
+                        scope.launch(_context + CoroutineName("swarm-stream-${stream.id} ($protocol)")) {
+                            handler(protocol, stream)
+                        }
+                    } else {
+                        stream.reset()
+                        logger.warn { "no handler registered for $protocol" }
+                    }
+                }
+        }
+        if (result == null) {
+            stream.reset()
+            logger.warn { "negotiation timeout in when determining protocol" }
+        }
     }
 
     companion object {

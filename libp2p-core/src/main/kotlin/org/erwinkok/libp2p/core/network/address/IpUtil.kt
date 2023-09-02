@@ -4,6 +4,7 @@ package org.erwinkok.libp2p.core.network.address
 
 import inet.ipaddr.IPAddress
 import inet.ipaddr.IPAddressString
+import inet.ipaddr.ipv6.IPv6Address
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.result.errorMessage
 import org.erwinkok.result.getOrElse
@@ -39,10 +40,12 @@ object IpUtil {
     val unroutableCIDR6 = listOf(
         "ff00::/8",
     )
-    private var Private4 = parseCidr(privateCIDR4)
-    private var Private6 = parseCidr(privateCIDR6)
-    private var Unroutable4 = parseCidr(unroutableCIDR4)
-    private var Unroutable6 = parseCidr(unroutableCIDR6)
+    private val Private4 = parseCidr(privateCIDR4)
+    private val Private6 = parseCidr(privateCIDR6)
+    private val Unroutable4 = parseCidr(unroutableCIDR4)
+    private val Unroutable6 = parseCidr(unroutableCIDR6)
+
+    private val nat64WellKnownPrefix = IPAddressString("64:ff9b::/96").address.toPrefixBlock()
 
     val IP4Loopback = InetMultiaddress.fromString("/ip4/127.0.0.1").getOrElse { error("Could not create Multiaddress: ${errorMessage(it)}") }
     val IP6Loopback = InetMultiaddress.fromString("/ip6/::1").getOrElse { error("Could not create Multiaddress: ${errorMessage(it)}") }
@@ -86,6 +89,11 @@ object IpUtil {
             return inAddrRange(ip, Private6)
         }
         return false
+    }
+
+    fun isNat64Ipv4ConvertedIpv6Address(address: InetMultiaddress): Boolean {
+        val ip = address.hostName?.address as? IPv6Address ?: return false
+        return nat64WellKnownPrefix.contains(ip)
     }
 
     fun contains(address: InetMultiaddress, list: List<InetMultiaddress>): Boolean {

@@ -11,9 +11,9 @@ import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.StreamHandler
 import org.erwinkok.libp2p.core.network.transport.TransportConnection
 import org.erwinkok.libp2p.core.resourcemanager.ResourceManager
-import org.erwinkok.multiformat.multistream.MultistreamMuxer
 import org.erwinkok.result.Err
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
@@ -25,7 +25,7 @@ class NetworkPeer(
     val peerId: PeerId,
     private val swarm: Swarm,
     private val resourceManager: ResourceManager,
-    private val multistreamMuxer: MultistreamMuxer<Stream>,
+    private val streamHandler: StreamHandler?,
 ) : AwaitableClosable {
     private val _context = SupervisorJob(scope.coroutineContext[Job])
 
@@ -40,7 +40,7 @@ class NetworkPeer(
         statistics.direction = direction
         statistics.opened = Instant.now()
         connections.withLock {
-            val connection = SwarmConnection(scope, transportConnection, swarm, resourceManager, multistreamMuxer, nextConnectionId())
+            val connection = SwarmConnection(scope, transportConnection, swarm, resourceManager, streamHandler, nextConnectionId())
             connections.add(connection)
             return Ok(connection)
         }

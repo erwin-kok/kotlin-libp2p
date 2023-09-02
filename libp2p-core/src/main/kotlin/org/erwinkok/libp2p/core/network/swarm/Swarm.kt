@@ -9,16 +9,13 @@ import kotlinx.coroutines.Job
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
-import org.erwinkok.libp2p.core.host.LocalIdentity
-import org.erwinkok.libp2p.core.host.Option
-import org.erwinkok.libp2p.core.host.Options
 import org.erwinkok.libp2p.core.host.PeerId
-import org.erwinkok.libp2p.core.host.builder.SwarmConfig
 import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.StreamHandler
 import org.erwinkok.libp2p.core.network.Subscriber
 import org.erwinkok.libp2p.core.network.connectiongater.ConnectionGater
 import org.erwinkok.libp2p.core.network.transport.Transport
@@ -26,34 +23,35 @@ import org.erwinkok.libp2p.core.network.transport.TransportConnection
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.resourcemanager.NullResourceManager
 import org.erwinkok.libp2p.core.resourcemanager.ResourceManager
-import org.erwinkok.multiformat.multistream.MultistreamMuxer
 import org.erwinkok.result.Err
 import org.erwinkok.result.Error
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.flatMap
-import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
 
-fun Options<Swarm>.withConnectionGater(bla: ConnectionGater): Options<Swarm> {
-    list.add { it.bla = bla }
-    return this
+typealias InetMultiAddressConstructor = () -> Result<InetMultiaddress>
+
+class SwarmConfig {
+    var dialers: Int = 4
+    var maxRetries: Int = 3
+    var dialTimeout = 15.seconds
+    var backoffBase = 15.seconds
+    var backoffCoefficient = 1.seconds
+    val listenAddresses = mutableListOf<InetMultiAddressConstructor>()
+
+    var connectionGater: ConnectionGater? = null
+    var resourceManager: ResourceManager? = null
 }
 
-fun Option<Swarm>.withConnectionGater(bla: ConnectionGater): Option<Swarm> {
-    return { it.bla = bla }
-}
-
-class Swarm private constructor(
+class Swarm(
     val scope: CoroutineScope,
     override val localPeerId: PeerId,
     override val peerstore: Peerstore,
-    override val resourceManager: ResourceManager,
-    override val multistreamMuxer: MultistreamMuxer<Stream>,
     private val eventBus: EventBus,
-    private val connectionGater: ConnectionGater?,
     swarmConfig: SwarmConfig,
 ) : AwaitableClosable, Network {
     private val _context = Job(scope.coroutineContext[Job])
@@ -63,14 +61,18 @@ class Swarm private constructor(
     private val peers = ConcurrentMap<PeerId, NetworkPeer>()
     private val subscribersLock = ReentrantLock()
     private val subscribers = mutableListOf<Subscriber>()
-
-    internal var bla: ConnectionGater? = null
+    private val connectionGater = swarmConfig.connectionGater
 
     override val jobContext: Job
         get() = _context
 
+    override val resourceManager: ResourceManager
+
+    override var streamHandler: StreamHandler? = null
+
     init {
-        swarmDialer = SwarmDialer(scope, swarmTransport, this, peerstore, connectionGater, swarmConfig)
+        resourceManager = swarmConfig.resourceManager ?: NullResourceManager
+        swarmDialer = SwarmDialer(scope, swarmTransport, this, peerstore, swarmConfig)
         swarmListener = SwarmListener(scope, this, swarmTransport)
     }
 
@@ -177,7 +179,7 @@ class Swarm private constructor(
     }
 
     internal fun getOrCreatePeer(peerId: PeerId): NetworkPeer {
-        return peers.computeIfAbsent(peerId) { NetworkPeer(scope, peerId, this, resourceManager, multistreamMuxer) }
+        return peers.computeIfAbsent(peerId) { NetworkPeer(scope, peerId, this, resourceManager, streamHandler) }
     }
 
     internal fun addConnection(transportConnection: TransportConnection, direction: Direction): Result<SwarmConnection> {
@@ -204,56 +206,9 @@ class Swarm private constructor(
         }.forEach { notify(it) }
     }
 
-    class Builder(
-        private val eventBus: EventBus,
-        private val localIdentity: LocalIdentity,
-        private val peerstore: Peerstore,
-        private val multistreamMuxer: MultistreamMuxer<Stream>,
-    ) {
-        private var connectionGater: ConnectionGater? = null
-        private var resourceManager: ResourceManager? = null
-        private var swarmConfig: SwarmConfig? = null
-
-        fun withConnectionGater(connectionGater: ConnectionGater): Builder {
-            this.connectionGater = connectionGater
-            return this
-        }
-
-        fun withResourceManager(resourceManager: ResourceManager): Builder {
-            this.resourceManager = resourceManager
-            return this
-        }
-
-        fun withSwarmConfig(swarmConfig: SwarmConfig): Builder {
-            this.swarmConfig = swarmConfig
-            return this
-        }
-
-        suspend fun build(scope: CoroutineScope): Result<Swarm> {
-            peerstore.addLocalIdentity(localIdentity)
-                .onFailure { return Err(it) }
-            return Ok(
-                Swarm(
-                    scope,
-                    localIdentity.peerId,
-                    peerstore,
-                    resourceManager ?: NullResourceManager,
-                    multistreamMuxer,
-                    eventBus,
-                    connectionGater,
-                    swarmConfig ?: SwarmConfig(),
-                ),
-            )
-        }
-    }
-
     companion object {
         val ErrSwarmClosed = Error("Swarm is closed")
         val ErrDialToSelf = Error("dial to self attempted")
         val ErrGaterDisallowedConnection = Error("gater disallows connection to peer")
-
-        fun builder(eventBus: EventBus, localIdentity: LocalIdentity, peerstore: Peerstore, multistreamMuxer: MultistreamMuxer<Stream>): Builder {
-            return Builder(eventBus, localIdentity, peerstore, multistreamMuxer)
-        }
     }
 }

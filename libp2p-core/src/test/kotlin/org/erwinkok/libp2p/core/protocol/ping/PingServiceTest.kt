@@ -1,10 +1,11 @@
+// Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.protocol.ping
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
-import org.erwinkok.libp2p.core.host.BasicHost
+import org.erwinkok.libp2p.core.host.BlankHost
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.swarm.SwarmTestBuilder
 import org.erwinkok.libp2p.core.record.AddressInfo
@@ -19,8 +20,8 @@ internal class PingServiceTest {
     @Test
     fun testPing() = runTest {
         withContext(Dispatchers.Default) {
-            val h1 = BasicHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
-            val h2 = BasicHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
+            val h1 = BlankHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
+            val h2 = BlankHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
             val ps1 = PingService(this, h1)
             val ps2 = PingService(this, h2)
             h1.connect(AddressInfo.fromPeerIdAndAddresses(h2.id, h2.addresses())).expectNoErrors()

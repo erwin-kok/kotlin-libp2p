@@ -2,9 +2,12 @@
 package org.erwinkok.libp2p.core.host
 
 import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
@@ -14,9 +17,11 @@ import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.StreamHandler
 import org.erwinkok.libp2p.core.network.address.AddressUtil
 import org.erwinkok.libp2p.core.network.address.IpUtil
 import org.erwinkok.libp2p.core.network.address.NetworkInterface
+import org.erwinkok.libp2p.core.network.swarm.SwarmConnection
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.TempAddrTTL
 import org.erwinkok.libp2p.core.protocol.identify.IdService
@@ -25,6 +30,7 @@ import org.erwinkok.libp2p.core.record.AddressInfo
 import org.erwinkok.libp2p.core.record.Envelope
 import org.erwinkok.libp2p.core.record.PeerRecord
 import org.erwinkok.multiformat.multistream.MultistreamMuxer
+import org.erwinkok.multiformat.multistream.ProtocolHandlerInfo
 import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.Err
 import org.erwinkok.result.Ok
@@ -35,6 +41,8 @@ import org.erwinkok.result.getOrElse
 import org.erwinkok.result.mapBoth
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
+import java.time.Duration
+import java.time.Instant
 import kotlin.concurrent.withLock
 
 private val logger = KotlinLogging.logger {}
@@ -62,8 +70,7 @@ class BasicHost(
     override val peerstore: Peerstore
         get() = network.peerstore
 
-    override val multistreamMuxer: MultistreamMuxer<Stream>
-        get() = network.multistreamMuxer
+    override val multistreamMuxer = MultistreamMuxer<Stream>()
 
     init {
         updateLocalIpAddress()
@@ -73,6 +80,7 @@ class BasicHost(
         } else {
             null
         }
+        network.streamHandler = ::handleStream
     }
 
     suspend fun start() {
@@ -218,6 +226,33 @@ class BasicHost(
         eventBus.close()
         network.close()
         _context.complete()
+    }
+
+    private suspend fun handleStream(stream: Stream) {
+        val before = Instant.now()
+        val result = withTimeoutOrNull(SwarmConnection.NegotiationTimeout) {
+            multistreamMuxer.negotiate(stream)
+                .onFailure { e ->
+                    val took = Duration.between(before, Instant.now())
+                    logger.warn { "protocol mux failed: ${e.message} (took $took)" }
+                    stream.reset()
+                }
+                .onSuccess { (_, protocol, handler): ProtocolHandlerInfo<Stream> ->
+                    stream.setProtocol(protocol)
+                    if (handler != null) {
+                        scope.launch(_context + CoroutineName("swarm-stream-${stream.id} ($protocol)")) {
+                            handler(protocol, stream)
+                        }
+                    } else {
+                        stream.reset()
+                        logger.warn { "no handler registered for $protocol" }
+                    }
+                }
+        }
+        if (result == null) {
+            stream.reset()
+            logger.warn { "negotiation timeout in when determining protocol" }
+        }
     }
 
     companion object {

@@ -6,13 +6,12 @@ import org.erwinkok.libp2p.core.event.EventBus
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.StreamHandler
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.record.AddressInfo
 import org.erwinkok.multiformat.multistream.MultistreamMuxer
 import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.Result
-
-typealias StreamHandler = suspend (Stream) -> Unit
 
 interface Host : AwaitableClosable {
     val id: PeerId

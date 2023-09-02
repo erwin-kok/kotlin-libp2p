@@ -1,10 +1,9 @@
+// Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.protocol.identify
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.Channel.Factory.RENDEZVOUS
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -20,16 +19,13 @@ import org.erwinkok.libp2p.core.network.Network
 import org.erwinkok.libp2p.core.network.NetworkConnection
 import org.erwinkok.libp2p.core.network.Subscriber
 import org.erwinkok.libp2p.core.network.address.AddressUtilTest.Companion.assertInetMultiaddressEqual
-import org.erwinkok.libp2p.core.network.swarm.Swarm
 import org.erwinkok.libp2p.core.network.swarm.SwarmTestBuilder
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.RecentlyConnectedAddrTTL
-import org.erwinkok.libp2p.core.record.AddressInfo
-import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.expectNoErrors
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import kotlin.time.Duration.Companion.hours
 
@@ -98,6 +94,16 @@ class IdServiceTest {
         }
     }
 
+    @Test
+    fun protoMatching() {
+        val tcp1 = InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors()
+        val tcp2 = InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/2345").expectNoErrors()
+        val tcp3 = InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/4567").expectNoErrors()
+        val utp = InetMultiaddress.fromString("/ip4/1.2.3.4/udp/1234/utp").expectNoErrors()
+        assertTrue(IdService.hasConsistentTransport(tcp1, listOf(tcp2, tcp3, utp)))
+        assertFalse(IdService.hasConsistentTransport(utp, listOf(tcp2, tcp3)))
+    }
+
     private suspend fun testKnowsAddrs(h: Host, p: PeerId, expected: List<InetMultiaddress>) {
         assertInetMultiaddressEqual(expected, h.peerstore.addresses(p))
     }
@@ -115,54 +121,16 @@ class IdServiceTest {
         assertEquals(p, p2)
     }
 
-    private fun waitForDisconnectNotification(scope: CoroutineScope, swarm: Swarm): Job {
+    private fun waitForDisconnectNotification(scope: CoroutineScope, network: Network): Job {
         return scope.launch {
             var disconnected = false
-            swarm.subscribe(object : Subscriber {
+            network.subscribe(object : Subscriber {
                 override fun disconnected(network: Network, connection: NetworkConnection) {
                     disconnected = true
                 }
             })
             while (!disconnected) {
                 yield()
-            }
-        }
-    }
-
-    @Test
-    @Disabled
-    fun fastDisconnect() = runTest {
-        repeat(1) {
-            withContext(Dispatchers.Default) {
-                val protocolId = ProtocolId.of("/ipfs/id/1.0.0")
-                val target = BlankHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
-
-                val ids = IdService(this, target)
-                ids.start()
-
-                val sync = Channel<Unit>(RENDEZVOUS)
-                target.removeStreamHandler(protocolId)
-                target.setStreamHandler(protocolId) { stream ->
-                    sync.receive()
-
-                    val cons = target.network.connectionsToPeer(stream.connection.remoteIdentity.peerId)
-                    cons.forEach {
-                        it.close()
-                    }
-
-                    ids.handleIdentifyRequest(stream)
-                    sync.send(Unit)
-                }
-
-                val source = BlankHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
-                source.connect(AddressInfo.fromPeerIdAndAddresses(target.id, target.addresses()))
-                val stream = source.newStream(target.id, protocolId).expectNoErrors()
-                sync.send(Unit)
-                stream.close()
-                sync.receive()
-                ids.close()
-                source.close()
-                target.close()
             }
         }
     }

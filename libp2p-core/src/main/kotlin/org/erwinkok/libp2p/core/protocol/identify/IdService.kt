@@ -88,7 +88,7 @@ class IdService(
     private val connectionsMutex = Mutex()
     private val connections = mutableMapOf<NetworkConnection, ConnectionEntry>()
     private val addressMutex = Mutex()
-    private val observedAddressManager = ObservedAddressManager(scope)
+    private val observedAddressManager = ObservedAddressManager(scope, host)
 
     override val jobContext: Job get() = _context
 
@@ -705,5 +705,9 @@ class IdService(
         private const val SignedIdSize = 8 * 1024
         private const val MaxMessages = 10
         private const val maxPushConcurrency = 32
+
+        fun hasConsistentTransport(a: InetMultiaddress, green: List<InetMultiaddress>): Boolean {
+            return green.any { it.networkProtocol == a.networkProtocol }
+        }
     }
 }
