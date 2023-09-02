@@ -11,7 +11,7 @@ import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
-import org.erwinkok.libp2p.core.network.address.AddressUtil.resolveUnspecifiedAddresses
+import org.erwinkok.libp2p.core.network.address.AddressUtil
 import org.erwinkok.libp2p.core.network.swarm.Swarm.Companion.ErrSwarmClosed
 import org.erwinkok.result.CombinedError
 import org.erwinkok.result.Err
@@ -23,8 +23,6 @@ import org.erwinkok.result.flatMap
 import org.erwinkok.result.getOrElse
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
-import java.time.Instant
-import kotlin.time.Duration.Companion.minutes
 
 private val logger = KotlinLogging.logger {}
 
@@ -37,7 +35,7 @@ class SwarmListener(
     private val listenersLock = ReentrantLock()
     private val listeners = mutableMapOf<InetMultiaddress, Job>()
     private val interfaceListenAddresses = mutableListOf<InetMultiaddress>()
-    private var interfaceListenAddressesExpiration: Instant? = null
+    private var interfaceListenAddressesDirty = true
 
     override val jobContext: Job get() = _context
 
@@ -71,6 +69,7 @@ class SwarmListener(
                 return Err(ErrNotListening)
             }
             listeners.remove(address)?.cancel()
+            interfaceListenAddressesDirty = true
             swarm.notifyAll { subscriber -> subscriber.listenClose(swarm, address) }
         }
         return Ok(Unit)
@@ -84,14 +83,12 @@ class SwarmListener(
 
     fun interfaceListenAddresses(): Result<List<InetMultiaddress>> {
         listenersLock.withLock {
-            val expiration = interfaceListenAddressesExpiration
-            val expired = expiration == null || Instant.now().isAfter(expiration)
-            if (!expired) {
+            if (!interfaceListenAddressesDirty) {
                 return Ok(interfaceListenAddresses)
             }
             val listenAddresses = listeners.keys.toList()
             val newInterfaceListenAddresses = if (listenAddresses.isNotEmpty()) {
-                resolveUnspecifiedAddresses(listenAddresses)
+                AddressUtil.resolveUnspecifiedAddresses(listenAddresses)
                     .getOrElse { return Err(it) }
                     .toMutableList()
             } else {
@@ -99,7 +96,7 @@ class SwarmListener(
             }
             interfaceListenAddresses.clear()
             interfaceListenAddresses.addAll(newInterfaceListenAddresses)
-            interfaceListenAddressesExpiration = Instant.now().plusMillis(interfaceAddressesCacheDuration.inWholeMilliseconds)
+            interfaceListenAddressesDirty = false
         }
         return Ok(interfaceListenAddresses)
     }
@@ -135,6 +132,7 @@ class SwarmListener(
             }
         }
         listeners[listener.transportAddress] = job
+        interfaceListenAddressesDirty = true
         swarm.notifyAll { subscriber -> subscriber.listen(swarm, listener.transportAddress) }
         return Ok(Unit)
     }
@@ -142,6 +140,5 @@ class SwarmListener(
     companion object {
         private val ErrAlreadyListening = Error("already listening on provided address")
         private val ErrNotListening = Error("not listening on provided address")
-        private val interfaceAddressesCacheDuration = 1.minutes
     }
 }

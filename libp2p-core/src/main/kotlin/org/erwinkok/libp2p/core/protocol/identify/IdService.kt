@@ -222,7 +222,7 @@ class IdService(
                         scope.launch(_context + CoroutineName("send-push-${connection.remoteIdentity}")) {
                             semaphore.acquire()
                             withTimeoutOrNull(5.seconds) {
-                                host.newStream(connection.remoteIdentity.peerId, Id)
+                                host.newStream(connection.remoteIdentity.peerId, IdPush)
                                     .onSuccess {
                                         sendIdentifyResponse(it, true)
                                     }
