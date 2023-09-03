@@ -82,7 +82,7 @@ See for an in-depth description of libp2p, please see: https://libp2p.io/
     - [ ] Quic (planned)
 
 - Protocols
-    - [ ] Identify (planned)
+    - [X] Identify
     - [X] Ping
     - [ ] DHT/Kademlia (planned)
     - [ ] pubsub (planned)

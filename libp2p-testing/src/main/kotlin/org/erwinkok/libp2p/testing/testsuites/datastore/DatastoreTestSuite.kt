@@ -39,6 +39,7 @@ import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.function.Executable
 import java.util.stream.Stream
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.minutes
 
 class DatastoreTestSuite(private val dsName: String) {
     private class SubTestExecutable<T : Datastore>(
@@ -46,7 +47,7 @@ class DatastoreTestSuite(private val dsName: String) {
         private val exec: suspend (CoroutineScope, T) -> Unit,
         private val cleanup: suspend (CoroutineScope, T) -> Unit,
     ) : Executable {
-        override fun execute() = runTest {
+        override fun execute() = runTest(timeout = 1.minutes) {
             val element = create(this)
             element.use {
                 exec(this, element)

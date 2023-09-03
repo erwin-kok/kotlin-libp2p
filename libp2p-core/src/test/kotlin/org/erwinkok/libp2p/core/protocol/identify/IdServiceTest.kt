@@ -47,6 +47,7 @@ import org.junit.jupiter.api.Test
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class IdServiceTest {
@@ -315,7 +316,7 @@ class IdServiceTest {
     }
 
     @Test
-    fun largeIdentifyMessage() = runTest {
+    fun largeIdentifyMessage() = runTest(timeout = 1.minutes) {
         withContext(Dispatchers.Default) {
             val h1 = BlankHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
             val h2 = BlankHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
