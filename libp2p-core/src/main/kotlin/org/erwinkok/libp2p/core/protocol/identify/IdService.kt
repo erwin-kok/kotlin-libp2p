@@ -9,6 +9,7 @@ import io.ktor.utils.io.readFully
 import io.ktor.utils.io.writeFully
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.withLock
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -66,7 +67,6 @@ import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
 import org.erwinkok.util.Tuple
 import org.erwinkok.util.Tuple2
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.ZERO
 import kotlin.time.Duration.Companion.seconds
@@ -264,7 +264,7 @@ class IdService(
         handleIdentifyResponse(stream, true)
     }
 
-    internal suspend fun handleIdentifyRequest(stream: Stream) {
+    private suspend fun handleIdentifyRequest(stream: Stream) {
         sendIdentifyResponse(stream, false)
     }
 
@@ -359,7 +359,7 @@ class IdService(
         val identify = withTimeoutOrNull(timeout) {
             readMessagesFromStream(stream)
         }
-        return identify ?: Err("Timout occurred while reading identify message")
+        return identify ?: Err("Timeout occurred while reading identify message")
     }
 
     private suspend fun readMessagesFromStream(stream: Stream): Result<DbIdentify.Identify> {
@@ -697,7 +697,6 @@ class IdService(
     companion object {
         private val Id = ProtocolId.of("/ipfs/id/1.0.0")
         private val IdPush = ProtocolId.of("/ipfs/id/push/1.0.0")
-        private val StreamReadTimeout = 60.seconds
         private const val LibP2PVersion = "ipfs/0.1.0"
         private const val ServiceName = "libp2p.identify"
         private const val DefaultUserAgent = "erwinkok.org/libp2p"
@@ -705,6 +704,7 @@ class IdService(
         private const val SignedIdSize = 8 * 1024
         private const val MaxMessages = 10
         private const val maxPushConcurrency = 32
+        var StreamReadTimeout = 60.seconds
 
         fun hasConsistentTransport(a: InetMultiaddress, green: List<InetMultiaddress>): Boolean {
             return green.any { it.networkProtocol == a.networkProtocol }

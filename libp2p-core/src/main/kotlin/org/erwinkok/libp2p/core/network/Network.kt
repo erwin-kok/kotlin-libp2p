@@ -30,6 +30,7 @@ interface Network : AwaitableClosable {
     fun unsubscribe(subscriber: Subscriber)
     suspend fun newStream(peerId: PeerId): Result<Stream>
     fun addListener(address: InetMultiaddress): Result<Unit>
+    fun removeListener(address: InetMultiaddress): Result<Unit>
 
     // ListenAddresses returns a list of addresses at which this network listens.
     fun listenAddresses(): List<InetMultiaddress>

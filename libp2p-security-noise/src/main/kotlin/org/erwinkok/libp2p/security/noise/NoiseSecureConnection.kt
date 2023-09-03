@@ -6,7 +6,6 @@ import io.ktor.network.util.DefaultByteBufferPool
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.CancellationException
 import io.ktor.utils.io.ReaderJob
 import io.ktor.utils.io.WriterJob
 import io.ktor.utils.io.cancel
@@ -17,6 +16,7 @@ import io.ktor.utils.io.pool.ObjectPool
 import io.ktor.utils.io.pool.useInstance
 import io.ktor.utils.io.reader
 import io.ktor.utils.io.writer
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

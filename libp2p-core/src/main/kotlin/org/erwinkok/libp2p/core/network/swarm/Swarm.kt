@@ -148,6 +148,10 @@ class Swarm(
         return swarmListener.addListener(address)
     }
 
+    override fun removeListener(address: InetMultiaddress): Result<Unit> {
+        return swarmListener.removeListener(address)
+    }
+
     override fun listenAddresses(): List<InetMultiaddress> {
         return swarmListener.listenAddresses()
     }

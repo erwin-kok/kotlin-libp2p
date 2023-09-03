@@ -3,9 +3,11 @@ package org.erwinkok.libp2p.core.network.swarm
 
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.withLock
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
@@ -44,6 +46,9 @@ class SwarmListener(
     }
 
     fun addListeners(addresses: List<InetMultiaddress>): Result<Unit> {
+        if (isClosed) {
+            return Err("SwarmListener is closed")
+        }
         val errors = CombinedError()
         for (address in addresses) {
             listenersLock.withLock {
@@ -115,22 +120,29 @@ class SwarmListener(
             .getOrElse { return Err(it) }
         logger.info { "Starting swarm-listener on: ${listener.transportAddress}..." }
         val job = scope.launch(_context + CoroutineName("swarm-listener-$address")) {
-            while (_context.isActive) {
-                listener.accept()
-                    .onSuccess { transportConnection ->
-                        logger.info { "swarm-listener-$address accepted connection: $transportConnection" }
-                        swarm.addConnection(transportConnection, Direction.DirInbound)
-                            .onFailure {
-                                if (it != ErrSwarmClosed) {
-                                    logger.warn { "swarm-listener-$address could not add connection: ${errorMessage(it)}" }
+            while (isActive) {
+                try {
+                    listener.accept()
+                        .onSuccess { transportConnection ->
+                            logger.info { "swarm-listener-$address accepted connection: $transportConnection" }
+                            swarm.addConnection(transportConnection, Direction.DirInbound)
+                                .onFailure {
+                                    if (it != ErrSwarmClosed) {
+                                        logger.warn { "swarm-listener-$address could not add connection: ${errorMessage(it)}" }
+                                    }
                                 }
-                            }
-                    }
-                    .onFailure {
-                        logger.warn { "swarm-listener-$address could not accept connection: ${errorMessage(it)}" }
-                    }
+                        }
+                        .onFailure {
+                            logger.warn { "swarm-listener-$address could not accept connection: ${errorMessage(it)}" }
+                        }
+                } catch (e: CancellationException) {
+                    // Job is cancelled, break the while loop
+                    listener.close()
+                    break
+                }
             }
         }
+        listeners[listener.transportAddress]?.cancel()
         listeners[listener.transportAddress] = job
         interfaceListenAddressesDirty = true
         swarm.notifyAll { subscriber -> subscriber.listen(swarm, listener.transportAddress) }

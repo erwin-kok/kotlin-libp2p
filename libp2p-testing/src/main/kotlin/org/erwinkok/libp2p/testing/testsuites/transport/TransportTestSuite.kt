@@ -8,6 +8,7 @@ import io.ktor.utils.io.close
 import io.ktor.utils.io.core.toByteArray
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.writeFully
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +44,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.function.Executable
-import java.util.concurrent.CancellationException
 import java.util.stream.Stream
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds

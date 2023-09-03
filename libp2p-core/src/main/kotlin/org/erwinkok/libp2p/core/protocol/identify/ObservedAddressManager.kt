@@ -237,7 +237,7 @@ class ObservedAddressManager(
         }
         val hostAddresses = host.addresses().map { normalizeMultiAddress(it) }
         if (!hasConsistentTransport(observed, hostAddresses) && !hasConsistentTransport(observed, listenAddresses)) {
-            logger.debug { "observed multiaddr doesn't match the transports of any announced addresses, from=${connection.remoteAddress}, observed=$observed" }
+            logger.debug { "observed multiaddress doesn't match the transports of any announced addresses, from=${connection.remoteAddress}, observed=$observed" }
             return false
         }
         return true
