@@ -56,7 +56,7 @@ class IdServiceTest {
     private val TestingId = ProtocolId.of("/p2p/_testing")
 
     @Test
-    fun idService() = runTest {
+    fun idService() = runTest(timeout = 1.minutes) {
         withContext(Dispatchers.Default) {
             val h1 = BlankHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()
             val h2 = BlankHost.create(this, SwarmTestBuilder.create(this)).expectNoErrors()

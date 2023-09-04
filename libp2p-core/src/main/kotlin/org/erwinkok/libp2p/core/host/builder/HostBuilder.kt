@@ -23,6 +23,8 @@ import org.erwinkok.libp2p.core.network.swarm.SwarmConfig
 import org.erwinkok.libp2p.core.network.transport.TransportFactory
 import org.erwinkok.libp2p.core.network.upgrader.Upgrader
 import org.erwinkok.libp2p.core.peerstore.Peerstore
+import org.erwinkok.libp2p.core.record.PeerRecord
+import org.erwinkok.libp2p.core.record.RecordRegistry
 import org.erwinkok.libp2p.core.resourcemanager.NullResourceManager
 import org.erwinkok.libp2p.core.resourcemanager.ResourceManager
 import org.erwinkok.libp2p.crypto.KeyType
@@ -124,6 +126,8 @@ class HostBuilder {
         if (errors.hasErrors) {
             return Err(errors.error())
         }
+
+        RecordRegistry.registerType(PeerRecord)
 
         val datastore = createDatastore(coroutineScope)
             .getOrElse { return Err(it) }
