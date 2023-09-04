@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test
 internal class RecordTest {
     @Test
     fun unmarshalPayload() {
-        assertErrorResult("payload type is not registered") { RecordRegistry.unmarshalRecordPayload("unknown type".toByteArray(), byteArrayOf()) }
+        assertErrorResult("payload type '0x756e6b6e6f776e2074797065' is not registered") { RecordRegistry.unmarshalRecordPayload("unknown type".toByteArray(), byteArrayOf()) }
     }
 
     @Test
