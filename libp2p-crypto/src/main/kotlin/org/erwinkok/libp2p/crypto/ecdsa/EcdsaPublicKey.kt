@@ -21,7 +21,7 @@ class EcdsaPublicKey(curve: Curve, cp: CurvePoint) : PublicKey(Crypto.KeyType.EC
     override fun verify(data: ByteArray, signature: ByteArray): Result<Boolean> {
         val asn1Signature = Asn1Signature.unmarshal(signature)
             .getOrElse { return Err(it) }
-        val hash = CryptoUtil.sha256Digest.digest(data)
+        val hash = CryptoUtil.digestSha256(data)
         return Ecdsa.verify(this, hash, EcdsaSignature(asn1Signature.r, asn1Signature.s))
     }
 

@@ -9,10 +9,14 @@ import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.resourcemanager.ResourceManager
 import org.erwinkok.result.Result
 
+typealias StreamHandler = suspend (Stream) -> Unit
+
 interface Network : AwaitableClosable {
     val peerstore: Peerstore
     val localPeerId: PeerId
-    val resourceManager: ResourceManager?
+    val resourceManager: ResourceManager
+    var streamHandler: StreamHandler?
+
     fun addTransport(transport: Transport): Result<Unit>
     fun transportForListening(address: InetMultiaddress): Result<Transport>
     fun transportForDialing(address: InetMultiaddress): Result<Transport>
@@ -26,6 +30,7 @@ interface Network : AwaitableClosable {
     fun unsubscribe(subscriber: Subscriber)
     suspend fun newStream(peerId: PeerId): Result<Stream>
     fun addListener(address: InetMultiaddress): Result<Unit>
+    fun removeListener(address: InetMultiaddress): Result<Unit>
 
     // ListenAddresses returns a list of addresses at which this network listens.
     fun listenAddresses(): List<InetMultiaddress>

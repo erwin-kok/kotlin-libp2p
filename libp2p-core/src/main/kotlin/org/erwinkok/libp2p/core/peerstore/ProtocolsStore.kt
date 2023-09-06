@@ -86,7 +86,7 @@ class ProtocolsStore private constructor(
                 .map { protocolMap -> protocolMap.firstOrNull { protocols.contains(it) } }
                 .flatMap {
                     return if (it == null) {
-                        logger.info { "Peer $peerId does not support any of the requested protocols [${protocols.joinToString(", ")}]" }
+                        logger.debug { "Peer $peerId does not support any of the requested protocols [${protocols.joinToString()}]" }
                         Ok(ProtocolId.Null)
                     } else {
                         Ok(it)

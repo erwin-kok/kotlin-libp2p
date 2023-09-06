@@ -17,7 +17,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.host.PeerId
-import org.erwinkok.libp2p.core.host.builder.SwarmConfig
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.connectiongater.ConnectionGater
@@ -41,8 +40,7 @@ internal class DialWorker(
     private val peerId: PeerId,
     private val networkPeer: NetworkPeer,
     private val swarmDialer: SwarmDialer,
-    private val swarmConfig: SwarmConfig,
-    private val connectionGater: ConnectionGater?,
+    swarmConfig: SwarmConfig,
 ) : AwaitableClosable {
     private val _context = SupervisorJob(scope.coroutineContext[Job])
     private val requestChannel = Channel<DialRequest>(16)
@@ -51,6 +49,11 @@ internal class DialWorker(
     private val trackedDials = mutableMapOf<InetMultiaddress, AddressDial>()
     private val queue = TimedPriorityQueue<AddressDial>(scope, 32)
     private val dialError = DialError(peerId)
+    private val connectionGater: ConnectionGater? = swarmConfig.connectionGater
+    private val dialTimeout = swarmConfig.dialTimeout
+    private val maxRetries = swarmConfig.maxRetries
+    private val backoffBase = swarmConfig.backoffBase
+    private val backoffCoefficient = swarmConfig.backoffCoefficient
 
     override val jobContext: Job get() = _context
 
@@ -144,7 +147,7 @@ internal class DialWorker(
             responseChannel.send(DialResponse(Ok(bestConnection)))
             return
         }
-        val timeout = withTimeoutOrNull(swarmConfig.dialTimeout) {
+        val connection = withTimeoutOrNull(dialTimeout) {
             dialAddress(peerId, addressDial.address)
                 .toErrorIf(
                     { transportConnection ->
@@ -158,6 +161,11 @@ internal class DialWorker(
                 .flatMap {
                     networkPeer.addConnection(it, Direction.DirOutbound)
                 }
+        }
+        if (connection == null) {
+            connectFailure(addressDial, SwarmDialer.ErrDialTimeout)
+        } else {
+            connection
                 .onSuccess { networkConnection ->
                     addressDial.connection = networkConnection
                     responseChannel.send(DialResponse(Ok(networkConnection)))
@@ -166,20 +174,17 @@ internal class DialWorker(
                     connectFailure(addressDial, it)
                 }
         }
-        if (timeout == null) {
-            connectFailure(addressDial, SwarmDialer.ErrDialTimeout)
-        }
     }
 
     private suspend fun connectFailure(addressDial: AddressDial, error: Error) {
         val address = addressDial.address
-        val backoffTime = swarmConfig.backoffBase + swarmConfig.backoffCoefficient * addressDial.retries * addressDial.retries
-        if (backoffTime > swarmConfig.backoffMax) {
+        val retries = addressDial.retries + 1
+        if (retries >= maxRetries) {
             logger.info { "Could not connect to Peer $peerId on address $address (${errorMessage(error)}). Giving up." }
             responseChannel.send(DialResponse(Err(dialError.combine())))
             trackedDials.remove(addressDial.address)
         } else {
-            val retries = addressDial.retries + 1
+            val backoffTime = backoffBase + backoffCoefficient * addressDial.retries * addressDial.retries
             logger.info { "Could not connect to Peer $peerId on address $address (${errorMessage(error)}). Retry $retries in $backoffTime" }
             if (error != SwarmDialer.ErrDialTimeout) {
                 dialError.recordError(addressDial.address, error)

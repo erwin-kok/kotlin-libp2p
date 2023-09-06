@@ -1,19 +1,19 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.network.swarm
 
-import kotlinx.atomicfu.locks.ReentrantLock
-import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import org.erwinkok.libp2p.core.base.AwaitableClosable
+import org.erwinkok.libp2p.core.base.closableLockedList
+import org.erwinkok.libp2p.core.base.withLock
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.StreamHandler
 import org.erwinkok.libp2p.core.network.transport.TransportConnection
 import org.erwinkok.libp2p.core.resourcemanager.ResourceManager
-import org.erwinkok.multiformat.multistream.MultistreamMuxer
 import org.erwinkok.result.Err
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
@@ -25,12 +25,11 @@ class NetworkPeer(
     val peerId: PeerId,
     private val swarm: Swarm,
     private val resourceManager: ResourceManager,
-    private val multistreamMuxer: MultistreamMuxer<Stream>,
+    private val streamHandler: StreamHandler?,
 ) : AwaitableClosable {
     private val _context = SupervisorJob(scope.coroutineContext[Job])
 
-    private val connectionsLock = ReentrantLock()
-    private val connections = mutableListOf<SwarmConnection>()
+    private val connections = closableLockedList<SwarmConnection>()
     private val nextConnectionId = AtomicLong(0)
 
     override val jobContext: Job
@@ -40,23 +39,23 @@ class NetworkPeer(
         val statistics = transportConnection.statistic
         statistics.direction = direction
         statistics.opened = Instant.now()
-        connectionsLock.withLock {
-            val connection = SwarmConnection(scope, transportConnection, swarm, resourceManager, multistreamMuxer, nextConnectionId())
+        connections.withLock {
+            val connection = SwarmConnection(scope, transportConnection, resourceManager, streamHandler, nextConnectionId()) {
+                swarm.removeConnection(it)
+            }
             connections.add(connection)
             return Ok(connection)
         }
     }
 
     fun removeConnection(connection: SwarmConnection) {
-        connectionsLock.withLock {
+        connections.withLock {
             connections.remove(connection)
         }
     }
 
     fun connections(): List<SwarmConnection> {
-        connectionsLock.withLock {
-            return connections.toList()
-        }
+        return connections.withLock { connections.toList() }
     }
 
     fun connectedness(): Connectedness {
@@ -64,7 +63,7 @@ class NetworkPeer(
     }
 
     fun bestConnectionToPeer(): SwarmConnection? {
-        connectionsLock.withLock {
+        connections.withLock {
             var bestConnection: SwarmConnection? = null
             for (swarmConnection in connections) {
                 if (!swarmConnection.isClosed && (bestConnection == null || isBetterConnection(swarmConnection, bestConnection))) {
@@ -85,6 +84,7 @@ class NetworkPeer(
     }
 
     override fun close() {
+        connections.close()
         _context.complete()
     }
 

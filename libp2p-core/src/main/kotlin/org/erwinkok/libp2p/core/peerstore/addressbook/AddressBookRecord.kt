@@ -106,7 +106,7 @@ class AddressBookRecord(private val addressStreamManager: AddressStreamManager, 
             }
             val state = Envelope.consumeEnvelope(certifiedRecord.raw, PeerRecord.PeerRecordEnvelopeDomain)
                 .getOrElse {
-                    logger.warn { "error unmarshalling stored signed peer record for peer $peerId" }
+                    logger.warn { "error unmarshalling stored signed peer record for peer $peerId: ${errorMessage(it)}" }
                     return null
                 }
             return state.envelope

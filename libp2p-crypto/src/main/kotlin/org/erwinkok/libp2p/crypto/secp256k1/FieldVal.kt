@@ -40,31 +40,7 @@ import kotlin.math.min
 // 	n[1] * 2^(26*1) = 2^23 * 2^26  = 2^49
 // 	n[0] * 2^(26*0) = 1    * 2^0   = 1
 // 	Sum: 0 + 0 + ... + 2^49 + 1 = 2^49 + 1
-class FieldVal constructor(l0: Int, l1: Int, l2: Int, l3: Int, l4: Int, l5: Int, l6: Int, l7: Int, l8: Int, l9: Int) {
-    private val _n0: Int
-    private val _n1: Int
-    private val _n2: Int
-    private val _n3: Int
-    private val _n4: Int
-    private val _n5: Int
-    private val _n6: Int
-    private val _n7: Int
-    private val _n8: Int
-    private val _n9: Int
-
-    init {
-        this._n0 = l0
-        this._n1 = l1
-        this._n2 = l2
-        this._n3 = l3
-        this._n4 = l4
-        this._n5 = l5
-        this._n6 = l6
-        this._n7 = l7
-        this._n8 = l8
-        this._n9 = l9
-    }
-
+class FieldVal(private val _n0: Int, private val _n1: Int, private val _n2: Int, private val _n3: Int, private val _n4: Int, private val _n5: Int, private val _n6: Int, private val _n7: Int, private val _n8: Int, private val _n9: Int) {
     val n: IntArray
         get() = intArrayOf(_n0, _n1, _n2, _n3, _n4, _n5, _n6, _n7, _n8, _n9)
 

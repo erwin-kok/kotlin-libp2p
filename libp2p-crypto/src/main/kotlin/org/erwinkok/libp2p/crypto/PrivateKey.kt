@@ -15,6 +15,6 @@ abstract class PrivateKey protected constructor(keyType: Crypto.KeyType) : Key(k
 
     override fun hash(): Result<ByteArray> {
         return bytes()
-            .map { CryptoUtil.sha256Digest.digest(it) }
+            .map { CryptoUtil.digestSha256(it) }
     }
 }

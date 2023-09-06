@@ -73,7 +73,7 @@ class Secp256k1PublicKey(val key: Jacobian2dPoint) : PublicKey(Crypto.KeyType.Se
     override fun verify(data: ByteArray, signature: ByteArray): Result<Boolean> {
         val sig = Secp256k1Signature.parseDERSignature(signature)
             .getOrElse { return Err(it) }
-        val hash = CryptoUtil.sha256Digest.digest(data)
+        val hash = CryptoUtil.digestSha256(data)
         return Ok(sig.verify(this, hash))
     }
 

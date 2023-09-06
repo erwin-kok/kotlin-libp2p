@@ -19,6 +19,7 @@ import org.erwinkok.result.getOrElse
 import org.erwinkok.result.getOrThrow
 import org.erwinkok.result.map
 import org.erwinkok.result.onFailure
+import org.erwinkok.result.toErrorIf
 import java.io.ByteArrayOutputStream
 
 data class EnvelopeRecordInfo<T : Record>(
@@ -64,11 +65,8 @@ class Envelope(
     private fun validate(domain: String): Result<Unit> {
         return makeUnsigned(domain, payloadType, rawPayload)
             .flatMap { publicKey.verify(it, signature) }
-            .map { unsigned ->
-                if (!unsigned) {
-                    return Err(ErrInvalidSignature)
-                }
-            }
+            .toErrorIf({ verified -> !verified }, { ErrInvalidSignature })
+            .map { }
     }
 
     override fun equals(other: Any?): Boolean {

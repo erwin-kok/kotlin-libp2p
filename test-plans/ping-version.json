@@ -1,0 +1,13 @@
+{
+  "id": "kotlin-libp2p-head",
+  "containerImageID": "kotlin-libp2p-head",
+  "transports": [
+    "tcp"
+  ],
+  "secureChannels": [
+    "noise"
+  ],
+  "muxers": [
+    "mplex"
+  ]
+}

@@ -11,12 +11,12 @@ import kotlin.experimental.and
 import kotlin.experimental.xor
 
 open class Curve(
-    var p: BigInteger,
-    var n: BigInteger,
-    var b: BigInteger,
-    var g: CurvePoint,
-    var bitSize: Int,
-    var name: String
+    val p: BigInteger,
+    val n: BigInteger,
+    val b: BigInteger,
+    val g: CurvePoint,
+    val bitSize: Int,
+    val name: String
 ) {
     open fun isOnCurve(cp: CurvePoint): Boolean {
         if (cp.x.signum() < 0 || cp.x >= p || cp.y.signum() < 0 || cp.y >= p) {

@@ -169,7 +169,7 @@ private suspend fun dialer(scope: CoroutineScope, host: Host, redisClient: Jedis
             logger.error { "Could not parse Multiaddress: $address" }
             return true
         }
-    logger.info { "Other peer multiaddr is: $peerAddress" }
+    logger.info { "Other peer multiaddress is: $peerAddress" }
 
     val peerId = peerAddress.peerId
         .getOrElse {

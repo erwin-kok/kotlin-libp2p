@@ -8,11 +8,9 @@ import kotlinx.coroutines.sync.withLock
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.host.PeerId
-import org.erwinkok.libp2p.core.host.builder.SwarmConfig
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.address.AddressUtil
 import org.erwinkok.libp2p.core.network.address.IpUtil
-import org.erwinkok.libp2p.core.network.connectiongater.ConnectionGater
 import org.erwinkok.libp2p.core.network.transport.Resolver
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.TempAddrTTL
@@ -35,12 +33,12 @@ class SwarmDialer(
     internal val swarmTransport: SwarmTransport,
     private val swarm: Swarm,
     private val peerstore: Peerstore,
-    private val connectionGater: ConnectionGater?,
     private val swarmConfig: SwarmConfig,
 ) : AwaitableClosable {
     private val _context = Job(scope.coroutineContext[Job])
     private val mutex = Mutex()
     private val workers = mutableMapOf<PeerId, DialWorker>()
+    private val connectionGater = swarmConfig.connectionGater
 
     override val jobContext: Job get() = _context
 
@@ -118,7 +116,7 @@ class SwarmDialer(
             }
             val peerDialer = workers.computeIfAbsent(peerId) {
                 val networkPeer = swarm.getOrCreatePeer(peerId)
-                DialWorker(scope, peerId, networkPeer, this, swarmConfig, connectionGater)
+                DialWorker(scope, peerId, networkPeer, this, swarmConfig)
             }
             return Ok(peerDialer)
         }

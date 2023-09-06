@@ -2,13 +2,12 @@
 package org.erwinkok.libp2p.core.record
 
 import org.erwinkok.result.Err
-import org.erwinkok.result.Error
 import org.erwinkok.result.Result
 import org.erwinkok.result.map
+import org.erwinkok.util.Hex
 import kotlin.reflect.KClass
 
 object RecordRegistry {
-    val ErrPayloadTypeNotRegistered = Error("payload type is not registered")
     val payloadTypeRegistry = mutableMapOf<Int, RecordType<out Record>>()
     val recordTypeRegistry = mutableMapOf<KClass<out Record>, RecordType<out Record>>()
 
@@ -28,7 +27,7 @@ object RecordRegistry {
 
     inline fun <reified T : Record> unmarshalRecordPayload(payloadType: ByteArray, payloadBytes: ByteArray): Result<T> {
         val hash = payloadType.contentHashCode()
-        val type = payloadTypeRegistry[hash] ?: return Err(ErrPayloadTypeNotRegistered)
+        val type = payloadTypeRegistry[hash] ?: return Err("payload type '0x${Hex.encode(payloadType)}' is not registered")
         return type.unmarshalRecord(payloadBytes)
             .map { it as T }
     }

@@ -24,7 +24,7 @@ class EcdsaPrivateKey(ecdsaPublicKey: EcdsaPublicKey, d: BigInteger) : PrivateKe
     }
 
     override fun sign(data: ByteArray): Result<ByteArray> {
-        val hash = CryptoUtil.sha256Digest.digest(data)
+        val hash = CryptoUtil.digestSha256(data)
         val rs = Ecdsa.sign(this, hash, SecureRandom())
             .getOrElse { return Err(it) }
         val ecdsaSignature = Asn1Signature(rs.r, rs.s)

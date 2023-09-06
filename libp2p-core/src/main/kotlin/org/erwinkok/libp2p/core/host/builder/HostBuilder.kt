@@ -6,37 +6,34 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.datastore.BatchingDatastore
-import org.erwinkok.libp2p.core.datastore.Key.Companion.key
 import org.erwinkok.libp2p.core.datastore.MapDatastore
 import org.erwinkok.libp2p.core.event.EventBus
 import org.erwinkok.libp2p.core.host.BasicHost
 import org.erwinkok.libp2p.core.host.Host
 import org.erwinkok.libp2p.core.host.LocalIdentity
-import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
-import org.erwinkok.libp2p.core.network.Stream
 import org.erwinkok.libp2p.core.network.connectiongater.ConnectionGater
 import org.erwinkok.libp2p.core.network.securitymuxer.SecureTransportFactory
 import org.erwinkok.libp2p.core.network.securitymuxer.SecurityMuxer
 import org.erwinkok.libp2p.core.network.streammuxer.StreamMuxer
 import org.erwinkok.libp2p.core.network.streammuxer.StreamMuxerTransportFactory
 import org.erwinkok.libp2p.core.network.swarm.Swarm
+import org.erwinkok.libp2p.core.network.swarm.SwarmConfig
 import org.erwinkok.libp2p.core.network.transport.TransportFactory
 import org.erwinkok.libp2p.core.network.upgrader.Upgrader
 import org.erwinkok.libp2p.core.peerstore.Peerstore
+import org.erwinkok.libp2p.core.record.PeerRecord
+import org.erwinkok.libp2p.core.record.RecordRegistry
 import org.erwinkok.libp2p.core.resourcemanager.NullResourceManager
 import org.erwinkok.libp2p.core.resourcemanager.ResourceManager
 import org.erwinkok.libp2p.crypto.KeyType
-import org.erwinkok.multiformat.multistream.MultistreamMuxer
 import org.erwinkok.result.CombinedError
 import org.erwinkok.result.Err
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.flatMap
-import org.erwinkok.result.getOr
 import org.erwinkok.result.getOrElse
-import org.erwinkok.result.map
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
 import org.reflections.Reflections
@@ -130,49 +127,37 @@ class HostBuilder {
             return Err(errors.error())
         }
 
+        RecordRegistry.registerType(PeerRecord)
+
         val datastore = createDatastore(coroutineScope)
             .getOrElse { return Err(it) }
         val peerstore = Peerstore.create(coroutineScope, datastore, config.peerstoreConfig)
             .getOrElse { return Err(it) }
-        val localIdentity = createIdentity(peerstore)
+        val localIdentity = createIdentity()
             .getOrElse { return Err(it) }
-
-        peerstore.addLocalIdentity(localIdentity)
-            .onFailure { errors.recordError(it) }
 
         val eventbus = EventBus()
-        val multistreamMuxer = MultistreamMuxer<Stream>()
 
-        val swarmBuilder = Swarm.Builder(
-            eventbus,
+        peerstore.addLocalIdentity(localIdentity)
+            .onFailure { return Err(it) }
+
+        val swarmConfig = SwarmConfig()
+        swarmConfig.connectionGater = config.connectionGater
+        swarmConfig.resourceManager = config.resourceManager
+
+        val swarm = Swarm(
+            coroutineScope,
             localIdentity.peerId,
             peerstore,
-            multistreamMuxer,
+            eventbus,
+            swarmConfig,
         )
-
-        val connectionGater = config.connectionGater
-        if (connectionGater != null) {
-            swarmBuilder.withConnectionGater(connectionGater)
-        }
-
-        val resourceManager = config.resourceManager
-        if (resourceManager != null) {
-            swarmBuilder.withResourceManager(resourceManager)
-        }
-
-        swarmBuilder.withSwarmConfig(config.swarmConfig)
-
-        val swarm = swarmBuilder.build(coroutineScope)
-            .getOrElse { return Err(it) }
 
         val host = BasicHost(
             coroutineScope,
-            localIdentity,
-            config,
             swarm,
-            peerstore,
-            multistreamMuxer,
             eventbus,
+            config,
         )
 
         val upgrader = createUpgrader(coroutineScope, localIdentity, NullResourceManager)
@@ -182,6 +167,7 @@ class HostBuilder {
         return if (errors.hasErrors) {
             Err(errors.error())
         } else {
+            host.start()
             Ok(host)
         }
     }
@@ -190,17 +176,8 @@ class HostBuilder {
         return Ok(config.datastore ?: MapDatastore(coroutineScope))
     }
 
-    private suspend fun createIdentity(peerstore: Peerstore): Result<LocalIdentity> {
-        var localIdentity = config.localIdentity
-        if (localIdentity == null) {
-            val datastore = config.datastore
-            if (datastore != null) {
-                localIdentity = datastore.get(key("self-peerid"))
-                    .flatMap { PeerId.fromBytes(it) }
-                    .map { peerstore.localIdentity(it) }
-                    .getOr(null)
-            }
-        }
+    private fun createIdentity(): Result<LocalIdentity> {
+        val localIdentity = config.localIdentity
         if (localIdentity != null) {
             return Ok(localIdentity)
         }

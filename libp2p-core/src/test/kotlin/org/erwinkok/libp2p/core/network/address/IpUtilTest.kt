@@ -6,6 +6,7 @@ import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.address.AddressUtilTest.Companion.assertInetMultiaddressEqual
 import org.erwinkok.result.expectNoErrors
 import org.erwinkok.util.Tuple2
+import org.erwinkok.util.Tuple3
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -75,6 +76,22 @@ internal class IpUtilTest {
             DynamicTest.dynamicTest("Test: $inp") {
                 val dedup = IpUtil.unique(inp)
                 assertInetMultiaddressEqual(out, dedup)
+            }
+        }.stream()
+    }
+
+    @TestFactory
+    fun testIsWellKnownPrefixIPv4ConvertedIPv6Address(): Stream<DynamicTest> {
+        return listOf(
+            Tuple3("/ip4/1.2.3.4/tcp/1234", false, "ip4 addresses should return false"),
+            Tuple3("/ip6/1::4/tcp/1234", false, "ip6 addresses doesn't have well-known prefix"),
+            Tuple3("/ip6/::1/tcp/1234", false, "localhost addresses should return false"),
+            Tuple3("/ip6/64:ff9b::192.0.1.2/tcp/1234", true, "ip6 address begins with well-known prefix"),
+            Tuple3("/ip6/64:ff9b::1:192.0.1.2/tcp/1234", false, "64:ff9b::1 is not well-known prefix"),
+        ).map { (addressString, want, failureReason) ->
+            DynamicTest.dynamicTest("Test: $addressString") {
+                val address = InetMultiaddress.fromString(addressString).expectNoErrors()
+                assertEquals(want, IpUtil.isNat64Ipv4ConvertedIpv6Address(address), failureReason)
             }
         }.stream()
     }

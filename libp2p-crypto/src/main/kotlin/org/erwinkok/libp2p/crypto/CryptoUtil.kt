@@ -3,7 +3,6 @@ package org.erwinkok.libp2p.crypto
 
 import com.google.protobuf.ByteString
 import com.google.protobuf.InvalidProtocolBufferException
-import mu.KotlinLogging
 import org.erwinkok.libp2p.crypto.ecdsa.Ecdsa
 import org.erwinkok.libp2p.crypto.ed25519.Ed25519
 import org.erwinkok.libp2p.crypto.pb.Crypto
@@ -14,13 +13,13 @@ import org.erwinkok.result.Result
 import org.erwinkok.result.errorMessage
 import org.erwinkok.result.map
 import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
 import java.security.SecureRandom
 
-private val logger = KotlinLogging.logger {}
-
 object CryptoUtil {
-    val sha256Digest: MessageDigest by lazy { init256Digest() }
+    fun digestSha256(input: ByteArray): ByteArray {
+        val sha256Digest = MessageDigest.getInstance("SHA-256")
+        return sha256Digest.digest(input)
+    }
 
     fun generateKeyPair(keyType: KeyType, bits: Int = 2048, random: SecureRandom = SecureRandom()): Result<KeyPair> {
         return when (keyType) {
@@ -117,14 +116,5 @@ object CryptoUtil {
 
     fun convertPrivateKey(privateKey: Crypto.PrivateKey): Result<PrivateKey> {
         return unmarshalPrivateKey(privateKey.toByteArray())
-    }
-
-    private fun init256Digest(): MessageDigest {
-        try {
-            return MessageDigest.getInstance("SHA-256")
-        } catch (e: NoSuchAlgorithmException) {
-            logger.error(e) { "Could not find algorithm: " + e.message }
-            throw e
-        }
     }
 }

@@ -26,17 +26,19 @@ dependencies {
     implementation(libs.kotlin.serialization.cbor)
     implementation(libs.reflections)
 
-    runtimeOnly(libs.junit.jupiter.engine)
-
     testImplementation(testFixtures(libs.result.monad))
     testImplementation(projects.libp2pTesting)
+    testImplementation(projects.libp2pTransportTcp)
+    testImplementation(projects.libp2pSecurityPlaintext)
+    testImplementation(projects.libp2pMuxerMplex)
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.junit.jupiter.params)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.coroutines.debug)
     testImplementation(libs.io.mockk.mockk)
+    testImplementation(libs.slf4j.api)
 
-    testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.logback.classic)
 
     api(libs.protobuf.java)
 }

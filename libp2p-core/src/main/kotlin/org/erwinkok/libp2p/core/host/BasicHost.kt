@@ -2,9 +2,12 @@
 package org.erwinkok.libp2p.core.host
 
 import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
@@ -14,35 +17,41 @@ import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
 import org.erwinkok.libp2p.core.network.Stream
+import org.erwinkok.libp2p.core.network.StreamHandler
 import org.erwinkok.libp2p.core.network.address.AddressUtil
 import org.erwinkok.libp2p.core.network.address.IpUtil
 import org.erwinkok.libp2p.core.network.address.NetworkInterface
+import org.erwinkok.libp2p.core.network.swarm.SwarmConnection
 import org.erwinkok.libp2p.core.peerstore.Peerstore
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.TempAddrTTL
+import org.erwinkok.libp2p.core.protocol.identify.IdService
 import org.erwinkok.libp2p.core.protocol.ping.PingService
 import org.erwinkok.libp2p.core.record.AddressInfo
+import org.erwinkok.libp2p.core.record.Envelope
+import org.erwinkok.libp2p.core.record.PeerRecord
 import org.erwinkok.multiformat.multistream.MultistreamMuxer
+import org.erwinkok.multiformat.multistream.ProtocolHandlerInfo
 import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.Err
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.errorMessage
+import org.erwinkok.result.flatMap
 import org.erwinkok.result.getOrElse
 import org.erwinkok.result.mapBoth
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
+import java.time.Duration
+import java.time.Instant
 import kotlin.concurrent.withLock
 
 private val logger = KotlinLogging.logger {}
 
 class BasicHost(
     val scope: CoroutineScope,
-    val localIdentity: LocalIdentity,
-    hostConfig: HostConfig,
     override val network: Network,
-    override val peerstore: Peerstore,
-    override val multistreamMuxer: MultistreamMuxer<Stream>,
-    override val eventBus: EventBus,
+    override val eventBus: EventBus = EventBus(),
+    hostConfig: HostConfig = HostConfig(),
 ) : AwaitableClosable, Host {
     private val _context = SupervisorJob(scope.coroutineContext[Job])
     private val addressMutex = ReentrantLock()
@@ -50,21 +59,32 @@ class BasicHost(
     private val allInterfaceAddresses = mutableListOf<InetMultiaddress>()
 
     val pingService: PingService?
+    val idService: IdService
 
     override val jobContext: Job
         get() = _context
 
     override val id: PeerId
-        get() = localIdentity.peerId
+        get() = network.localPeerId
+
+    override val peerstore: Peerstore
+        get() = network.peerstore
+
+    override val multistreamMuxer = MultistreamMuxer<Stream>()
 
     init {
         updateLocalIpAddress()
-
+        idService = IdService(scope, this, disableSignedPeerRecord = hostConfig.disableSignedPeerRecord)
         pingService = if (hostConfig.enablePing) {
             PingService(scope, this)
         } else {
             null
         }
+        network.streamHandler = ::handleStream
+    }
+
+    suspend fun start() {
+        idService.start()
     }
 
     private fun updateLocalIpAddress() {
@@ -118,6 +138,7 @@ class BasicHost(
             .onFailure { return Err(it) }
         val stream = network.newStream(peerId)
             .getOrElse { return Err(it) }
+        idService.identifyWait(stream.connection)
         val preferredProtocol = preferredProtocol(peerId, protocols)
             .getOrElse {
                 stream.reset()
@@ -127,7 +148,7 @@ class BasicHost(
             stream.setProtocol(preferredProtocol)
             MultistreamMuxer.selectOneOf(mutableSetOf(preferredProtocol), stream)
         } else {
-            MultistreamMuxer.selectOneOf(protocols.toSet(), stream)
+            MultistreamMuxer.selectOneOf(protocols, stream)
                 .onSuccess { selected ->
                     stream.setProtocol(selected)
                     peerstore.addProtocols(peerId, mutableSetOf(selected))
@@ -162,10 +183,13 @@ class BasicHost(
     }
 
     private suspend fun dialPeer(peerId: PeerId): Result<Unit> {
-        logger.debug { "[$localIdentity] dialing $peerId" }
+        logger.debug { "[$id] dialing $peerId" }
         network.dialPeer(peerId)
-            .onSuccess { logger.debug { "[$localIdentity] finished dialing $peerId" } }
-            .onFailure { logger.error { "[$localIdentity] Error dialing host: ${errorMessage(it)}" } }
+            .onSuccess {
+                idService.identifyWait(it)
+                logger.debug { "[$id] finished dialing $peerId" }
+            }
+            .onFailure { logger.error { "[$id] Error dialing host: ${errorMessage(it)}" } }
         return Ok(Unit)
     }
 
@@ -181,24 +205,73 @@ class BasicHost(
         val localFilteredInterfaceAddresses = addressMutex.withLock {
             filteredInterfaceAddresses
         }
-        val finalAddresses = AddressUtil.resolveUnspecifiedAddresses(listenAddresses, localFilteredInterfaceAddresses)
+        val finalAddresses = mutableListOf<InetMultiaddress>()
+        AddressUtil.resolveUnspecifiedAddresses(listenAddresses, localFilteredInterfaceAddresses)
             .mapBoth(
                 {
-                    it
+                    finalAddresses.addAll(it)
                 },
                 {
                     logger.debug { "failed to resolve listen addresses" }
-                    listOf()
                 }
             )
+        val observedAddresses = idService.ownObservedAddresses()
+        finalAddresses.addAll(observedAddresses)
         return IpUtil.unique(finalAddresses)
     }
 
     override fun close() {
         pingService?.close()
+        idService.close()
         eventBus.close()
-        peerstore.close()
         network.close()
         _context.complete()
+    }
+
+    private suspend fun handleStream(stream: Stream) {
+        val before = Instant.now()
+        val result = withTimeoutOrNull(SwarmConnection.NegotiationTimeout) {
+            multistreamMuxer.negotiate(stream)
+                .onFailure { e ->
+                    val took = Duration.between(before, Instant.now())
+                    logger.warn { "protocol mux failed: ${e.message} (took $took)" }
+                    stream.reset()
+                }
+                .onSuccess { (_, protocol, handler): ProtocolHandlerInfo<Stream> ->
+                    stream.setProtocol(protocol)
+                    if (handler != null) {
+                        scope.launch(_context + CoroutineName("swarm-stream-${stream.id} ($protocol)")) {
+                            handler(protocol, stream)
+                        }
+                    } else {
+                        stream.reset()
+                        logger.warn { "no handler registered for $protocol" }
+                    }
+                }
+        }
+        if (result == null) {
+            stream.reset()
+            logger.warn { "negotiation timeout in when determining protocol" }
+        }
+    }
+
+    companion object {
+        suspend fun create(
+            scope: CoroutineScope,
+            network: Network,
+            eventBus: EventBus = EventBus(),
+            hostConfig: HostConfig = HostConfig()
+        ): Result<Host> {
+            val host = BasicHost(scope, network, eventBus, hostConfig)
+            val localIdentity = host.peerstore.localIdentity(host.id) ?: return Err("LocalIdentity not stored in peerstore")
+            if (!hostConfig.disableSignedPeerRecord) {
+                PeerRecord.fromPeerIdAndAddresses(host.id, host.addresses())
+                    .flatMap { record -> Envelope.seal(record, localIdentity.privateKey) }
+                    .flatMap { envelope -> host.peerstore.consumePeerRecord(envelope, Peerstore.PermanentAddrTTL) }
+                    .onFailure { Err("Error creating BlankHost: ${errorMessage(it)}") }
+            }
+            host.start()
+            return Ok(host)
+        }
     }
 }
