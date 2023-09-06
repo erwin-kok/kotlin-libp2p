@@ -40,10 +40,10 @@ private val logger = KotlinLogging.logger {}
 class SwarmConnection(
     scope: CoroutineScope,
     private val transportConnection: TransportConnection,
-    private val swarm: Swarm,
     private val resourceManager: ResourceManager,
     private val streamHandler: StreamHandler?,
     private val identifier: Long,
+    private val onClose: (SwarmConnection) -> Unit,
 ) : AwaitableClosable, NetworkConnection {
     private val _context = Job()
     private val _streams = closableLockedList<SwarmStream>()
@@ -136,7 +136,7 @@ class SwarmConnection(
         transportConnection.close()
         streams.forEach { it.reset() }
         _context.complete()
-        swarm.removeConnection(this)
+        onClose(this)
     }
 
     private fun addStream(muxedStream: MuxedStream, direction: Direction, streamScope: StreamManagementScope): Result<Stream> {

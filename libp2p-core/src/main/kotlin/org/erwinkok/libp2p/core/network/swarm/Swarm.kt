@@ -169,11 +169,6 @@ class Swarm(
         _context.complete()
     }
 
-    internal fun removeConnection(swarmConnection: SwarmConnection) {
-        getPeer(swarmConnection.remoteIdentity.peerId)?.removeConnection(swarmConnection)
-        notifyAll { subscriber -> subscriber.disconnected(this, swarmConnection) }
-    }
-
     private fun bestConnectionToPeer(peerId: PeerId): SwarmConnection? {
         return getPeer(peerId)?.bestConnectionToPeer()
     }
@@ -202,6 +197,11 @@ class Swarm(
             getOrCreatePeer(peerId).addConnection(transportConnection, direction)
                 .onSuccess { notifyAll { subscriber -> subscriber.connected(this, it) } }
         }
+    }
+
+    internal fun removeConnection(swarmConnection: SwarmConnection) {
+        getPeer(swarmConnection.remoteIdentity.peerId)?.removeConnection(swarmConnection)
+        notifyAll { subscriber -> subscriber.disconnected(this, swarmConnection) }
     }
 
     internal fun notifyAll(notify: (Subscriber) -> Unit) {

@@ -40,18 +40,22 @@ class NetworkPeer(
         statistics.direction = direction
         statistics.opened = Instant.now()
         connections.withLock {
-            val connection = SwarmConnection(scope, transportConnection, swarm, resourceManager, streamHandler, nextConnectionId())
+            val connection = SwarmConnection(scope, transportConnection, resourceManager, streamHandler, nextConnectionId()) {
+                swarm.removeConnection(it)
+            }
             connections.add(connection)
             return Ok(connection)
         }
     }
 
     fun removeConnection(connection: SwarmConnection) {
-        connections.remove(connection)
+        connections.withLock {
+            connections.remove(connection)
+        }
     }
 
     fun connections(): List<SwarmConnection> {
-        return connections.toList()
+        return connections.withLock { connections.toList() }
     }
 
     fun connectedness(): Connectedness {
