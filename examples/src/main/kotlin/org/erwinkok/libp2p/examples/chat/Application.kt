@@ -75,20 +75,17 @@ fun main() {
                 return@runBlocking
             }
 
-        val addresses = host
-            .addresses()
-            .map { it.withPeerId(localIdentity.peerId) }
-        logger.info { "Local addresses the Host listens on: ${addresses.joinToString()} " }
+        displayLocalListenAddress(host, localIdentity)
 
         host.setStreamHandler(ProtocolId.of("/chat/1.0.0")) {
             chatHandler(it)
         }
 
-        val localAddress = addPeerAddress(host, "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWDbJKcVvs9TvW3DWpvCtTbcqjAAthxxC1KSior6mNBb3r")
+        val peerAddress = addPeerAddress(host, "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWN2xSrWK1WeDx6DikZg6mLR3G8BzpQbrZd7dZGe7rJSZP")
 
         val basicHost = host as? BasicHost
         if (basicHost != null) {
-            val flow = basicHost.pingService?.ping(localAddress.peerId, 5.seconds)
+            val flow = basicHost.pingService?.ping(peerAddress.peerId, 5.seconds)
             if (flow != null) {
                 launch {
                     flow.collect { pingResult ->
@@ -98,7 +95,7 @@ fun main() {
             }
         }
 
-        val stream = host.newStream(localAddress.peerId, ProtocolId.of("/chat/1.0.0"))
+        val stream = host.newStream(peerAddress.peerId, ProtocolId.of("/chat/1.0.0"))
             .getOrElse {
                 logger.error { "Could not open chat stream with peer: ${errorMessage(it)}" }
                 host.close()
@@ -125,6 +122,13 @@ private suspend fun addPeerAddress(host: Host, peerAddress: String): AddressInfo
     val addresses = info.p2pAddresses().getOrThrow()
     host.peerstore.setAddresses(info.peerId, addresses, PermanentAddrTTL)
     return info
+}
+
+private fun displayLocalListenAddress(host: Host, localIdentity: LocalIdentity) {
+    val addresses = host
+        .addresses()
+        .map { it.withPeerId(localIdentity.peerId) }
+    logger.info { "Local addresses the Host listens on: ${addresses.joinToString()} " }
 }
 
 private suspend fun chatHandler(stream: Stream) {

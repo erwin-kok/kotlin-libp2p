@@ -239,7 +239,7 @@ class MplexStreamMuxerConnection internal constructor(
                     stream.remoteResetsStream()
                 } else {
                     mutex.unlock()
-                    logger.warn { "$this: Remote resets non-existing stream: $id" }
+                    logger.debug { "$this: Remote resets non-existing stream: $id" }
                 }
             }
         }

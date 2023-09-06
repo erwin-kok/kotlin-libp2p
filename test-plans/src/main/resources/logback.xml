@@ -14,7 +14,7 @@
     </appender>
 
     <!-- LOG everything at INFO level -->
-    <root level="info">
+    <root level="debug">
         <appender-ref ref="Console"/>
     </root>
 </configuration>
