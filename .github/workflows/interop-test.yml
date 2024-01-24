@@ -1,9 +1,6 @@
 name: Interoperability Testing
 on:
-  pull_request:
-  push:
-    branches:
-      - "master"
+  workflow_dispatch:
 
 jobs:
   run-multidim-interop:
