@@ -5,7 +5,6 @@ import kotlinx.kover.gradle.plugin.dsl.GroupingEntityType
 import kotlinx.kover.gradle.plugin.dsl.MetricType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 
 @Suppress("DSL_SCOPE_VIOLATION")
 plugins {
@@ -14,25 +13,25 @@ plugins {
     kotlin("plugin.serialization")
 
     org.jetbrains.kotlinx.kover
-    org.jlleitschuh.gradle.ktlint
+//    org.jlleitschuh.gradle.ktlint
     com.adarshr.`test-logger`
 }
 
 group = "org.erwinkok.libp2p"
 version = "0.2.0"
 
-ktlint {
-    verbose.set(true)
-    outputToConsole.set(true)
-    coloredOutput.set(true)
-    reporters {
-        reporter(ReporterType.CHECKSTYLE)
-        reporter(ReporterType.HTML)
-    }
-    filter {
-        exclude("**/style-violations.kt")
-    }
-}
+//ktlint {
+//    verbose.set(true)
+//    outputToConsole.set(true)
+//    coloredOutput.set(true)
+//    reporters {
+//        reporter(ReporterType.CHECKSTYLE)
+//        reporter(ReporterType.HTML)
+//    }
+//    filter {
+//        exclude("**/build/**")
+//    }
+//}
 
 tasks.test {
     useJUnitPlatform()
@@ -43,7 +42,6 @@ testlogger {
 }
 
 kover {
-    useKoverTool()
     excludeInstrumentation {
         classes("org.erwinkok.libp2p.*.pb.*")
     }
@@ -59,12 +57,13 @@ koverReport {
         }
     }
 
-    html {
-        onCheck = true
+    defaults {
+        html {
+            onCheck = true
+        }
     }
 
     verify {
-        onCheck = true
         rule {
             isEnabled = true
             entity = GroupingEntityType.APPLICATION

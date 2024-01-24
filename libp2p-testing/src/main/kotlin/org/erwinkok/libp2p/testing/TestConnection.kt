@@ -21,8 +21,8 @@ class TestConnection(chunkBufferPool: VerifyingChunkBufferPool) {
 
     inner class Inner(
         private val chunkBufferPool: VerifyingChunkBufferPool,
-        private val _input: ByteChannel,
-        private val _output: ByteChannel,
+        private val _input: ByteReadChannel,
+        private val _output: ByteWriteChannel,
     ) : Connection {
         override val pool: ObjectPool<ChunkBuffer>
             get() = chunkBufferPool
