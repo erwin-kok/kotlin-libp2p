@@ -20,6 +20,7 @@ import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.ProviderAddrTTL
 import org.erwinkok.libp2p.core.protocol.ping.PingService
 import org.erwinkok.libp2p.core.record.AddressInfo
 import org.erwinkok.libp2p.muxer.mplex.mplex
+import org.erwinkok.libp2p.muxer.yamux.yamux
 import org.erwinkok.libp2p.security.noise.noise
 import org.erwinkok.libp2p.transport.tcp.tcp
 import org.erwinkok.multiformat.multistream.ProtocolId
@@ -87,6 +88,7 @@ fun main() {
 
         when (muxer) {
             "mplex" -> hostBuilder.muxers { mplex() }
+            "yamux" -> hostBuilder.muxers { yamux() }
             else -> {
                 logger.error { "Unsupported muxer: $muxer" }
                 exitProcess(1)

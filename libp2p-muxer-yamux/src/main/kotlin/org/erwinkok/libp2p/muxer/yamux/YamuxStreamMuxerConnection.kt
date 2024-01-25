@@ -1,7 +1,7 @@
-// Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
+// Copyright (c) 2024 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 @file:OptIn(DelicateCoroutinesApi::class)
 
-package org.erwinkok.libp2p.muxer.mplex
+package org.erwinkok.libp2p.muxer.yamux
 
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
@@ -25,13 +25,13 @@ import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
 import org.erwinkok.libp2p.core.network.streammuxer.StreamMuxerConnection
 import org.erwinkok.libp2p.core.util.SafeChannel
-import org.erwinkok.libp2p.muxer.mplex.frame.CloseFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.Frame
-import org.erwinkok.libp2p.muxer.mplex.frame.MessageFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.NewStreamFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.ResetFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.readMplexFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.writeMplexFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.CloseFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.Frame
+import org.erwinkok.libp2p.muxer.yamux.frame.MessageFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.NewStreamFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.ResetFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.readMplexFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.writeMplexFrame
 import org.erwinkok.result.Err
 import org.erwinkok.result.Error
 import org.erwinkok.result.Ok
@@ -45,7 +45,7 @@ import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
 
-class MplexStreamMuxerConnection internal constructor(
+class YamuxStreamMuxerConnection internal constructor(
     private val scope: CoroutineScope,
     private val connection: Connection,
     private val initiator: Boolean,

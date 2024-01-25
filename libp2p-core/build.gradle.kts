@@ -31,6 +31,7 @@ dependencies {
     testImplementation(projects.libp2pTransportTcp)
     testImplementation(projects.libp2pSecurityPlaintext)
     testImplementation(projects.libp2pMuxerMplex)
+    testImplementation(projects.libp2pMuxerYamux)
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.junit.jupiter.params)
     testImplementation(libs.kotlinx.coroutines.test)

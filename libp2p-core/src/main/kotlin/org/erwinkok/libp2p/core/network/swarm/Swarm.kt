@@ -56,8 +56,8 @@ class Swarm(
 ) : AwaitableClosable, Network {
     private val _context = Job(scope.coroutineContext[Job])
     private val swarmTransport = SwarmTransport()
-    private val swarmListener: SwarmListener
-    private val swarmDialer: SwarmDialer
+    private val swarmListener = SwarmListener(scope, this, swarmTransport)
+    private val swarmDialer = SwarmDialer(scope, swarmTransport, this, peerstore, swarmConfig)
     private val peers = ConcurrentMap<PeerId, NetworkPeer>()
     private val subscribersLock = ReentrantLock()
     private val subscribers = mutableListOf<Subscriber>()
@@ -66,15 +66,9 @@ class Swarm(
     override val jobContext: Job
         get() = _context
 
-    override val resourceManager: ResourceManager
+    override val resourceManager: ResourceManager = swarmConfig.resourceManager ?: NullResourceManager
 
     override var streamHandler: StreamHandler? = null
-
-    init {
-        resourceManager = swarmConfig.resourceManager ?: NullResourceManager
-        swarmDialer = SwarmDialer(scope, swarmTransport, this, peerstore, swarmConfig)
-        swarmListener = SwarmListener(scope, this, swarmTransport)
-    }
 
     override fun addTransport(transport: Transport): Result<Unit> {
         return swarmTransport.addTransport(transport)

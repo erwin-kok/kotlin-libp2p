@@ -25,6 +25,7 @@ dependencies {
     implementation(projects.libp2pCore)
     implementation(projects.libp2pCrypto)
     implementation(projects.libp2pMuxerMplex)
+    implementation(projects.libp2pMuxerYamux)
     implementation(projects.libp2pSecurityNoise)
     implementation(projects.libp2pTransportTcp)
 
