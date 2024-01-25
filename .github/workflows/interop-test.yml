@@ -1,6 +1,10 @@
 name: Interoperability Testing
 on:
   workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - "master"
 
 jobs:
   run-multidim-interop:
@@ -12,7 +16,7 @@ jobs:
       - name: Build docker image
         run: docker buildx build --load -t kotlin-libp2p-head -f test-plans/Dockerfile .
       - name: Run tests
-        uses: libp2p/test-plans/.github/actions/run-interop-ping-test@master
+        uses: libp2p/test-plans/.github/actions/run-transport-interop-test@master
         with:
           test-filter: kotlin-libp2p-head
           extra-versions: ${{ github.workspace }}/test-plans/ping-version.json

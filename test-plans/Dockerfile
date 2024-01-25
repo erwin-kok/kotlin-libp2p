@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
-FROM gradle:jdk17 as BUILD
+FROM gradle:jdk17 AS BUILD
 COPY --chown=gradle:gradle . /home/gradle
 WORKDIR /home/gradle
-RUN gradle build --no-daemon -x test -x detekt -x ktlintCheck -x koverVerify -x koverHtmlReport
+RUN gradle build --no-daemon -x test -x detekt -x koverVerify -x koverHtmlReport
 
 FROM eclipse-temurin:17-jdk-jammy
 RUN mkdir /app
