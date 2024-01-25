@@ -7,5 +7,5 @@ import org.erwinkok.libp2p.core.resourcemanager.PeerScope
 import org.erwinkok.result.Result
 
 interface StreamMuxerTransport {
-    suspend fun newConnection(connection: Connection, initiator: Boolean, scope: PeerScope): Result<StreamMuxerConnection>
+    suspend fun newConnection(connection: Connection, initiator: Boolean, scope: PeerScope?): Result<StreamMuxerConnection>
 }

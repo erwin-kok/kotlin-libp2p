@@ -14,7 +14,7 @@ import org.erwinkok.result.Result
 class MplexStreamMuxerTransport private constructor(
     private val coroutineScope: CoroutineScope,
 ) : StreamMuxerTransport {
-    override suspend fun newConnection(connection: Connection, initiator: Boolean, scope: PeerScope): Result<StreamMuxerConnection> {
+    override suspend fun newConnection(connection: Connection, initiator: Boolean, scope: PeerScope?): Result<StreamMuxerConnection> {
         return Ok(MplexStreamMuxerConnection(coroutineScope, connection, initiator))
     }
 
