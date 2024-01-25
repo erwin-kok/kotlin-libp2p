@@ -5,13 +5,13 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import org.erwinkok.libp2p.core.network.readUnsignedVarInt
 import org.erwinkok.libp2p.core.network.writeUnsignedVarInt
-import org.erwinkok.libp2p.muxer.yamux.MplexStreamId
+import org.erwinkok.libp2p.muxer.yamux.YamuxStreamId
 import org.erwinkok.result.Error
 import org.erwinkok.result.Result
 import org.erwinkok.result.map
 import org.erwinkok.result.toErrorIf
 
-internal class ResetFrame(streamId: MplexStreamId) : Frame(streamId) {
+internal class ResetFrame(streamId: YamuxStreamId) : Frame(streamId) {
     override val type: Int
         get() {
             return if (streamId.initiator) ResetInitiatorTag else ResetReceiverTag
@@ -24,7 +24,7 @@ internal class ResetFrame(streamId: MplexStreamId) : Frame(streamId) {
     }
 }
 
-internal suspend fun ByteReadChannel.readResetFrame(streamId: MplexStreamId): Result<ResetFrame> {
+internal suspend fun ByteReadChannel.readResetFrame(streamId: YamuxStreamId): Result<ResetFrame> {
     return readUnsignedVarInt()
         .toErrorIf({ it != 0uL }, { Error("ResetFrame should not carry data") })
         .map { ResetFrame(streamId) }

@@ -46,10 +46,10 @@ import kotlin.time.Duration.Companion.seconds
 internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     override val pool = VerifyingChunkBufferPool()
 
-    private val mplexStreamId = MplexStreamId(true, 1234)
-    private val mplexStreamName = "AName"
+    private val yamuxStreamId = YamuxStreamId(true, 1234)
+    private val yamuxStreamName = "AName"
     private val session = mockk<Session>()
-    private val streamIdSlot = slot<MplexStreamId>()
+    private val streamIdSlot = slot<YamuxStreamId>()
 
     @BeforeEach
     fun setup() {
@@ -59,9 +59,9 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testIdAndName() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         assertEquals("stream000004d2/initiator", muxedStream.id)
-        assertEquals(mplexStreamName, muxedStream.name)
+        assertEquals(yamuxStreamName, muxedStream.name)
         muxedStream.close()
         muxedStream.awaitClosed()
         reader.stop()
@@ -71,7 +71,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testInitiallyNothingAvailableForRead() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         assertEquals(0, muxedStream.input.availableForRead)
         muxedStream.close()
         muxedStream.awaitClosed()
@@ -83,7 +83,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     fun testReadPacket() = runTest {
         repeat(1000) {
             val reader = FrameReader(this, pool)
-            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
             val random = Random.nextBytes(100000)
             assertTrue(muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(random) }))
             val bytes = ByteArray(random.size)
@@ -100,7 +100,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     fun testReadPacketSplit() = runTest {
         repeat(1000) {
             val reader = FrameReader(this, pool)
-            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
             val random = Random.nextBytes(50000)
             assertTrue(muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(random) }))
             for (j in 0 until 5) {
@@ -119,7 +119,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     fun testReadPacketCombined() = runTest {
         repeat(1000) {
             val reader = FrameReader(this, pool)
-            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
             val random = Random.nextBytes(50000)
             for (j in 0 until 5) {
                 val bytes = random.copyOfRange(j * 10000, (j + 1) * 10000)
@@ -138,7 +138,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testReadPacketWait() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         val result = withTimeoutOrNull(500) {
             muxedStream.input.readPacket(10)
         }
@@ -152,7 +152,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testReadPacketAfterCancel() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         muxedStream.input.cancel()
         yield() // Give the input coroutine a chance to cancel
         val exception1 = assertThrows<CancellationException> {
@@ -170,7 +170,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testReadPacketAfterClose() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         muxedStream.close()
@@ -184,13 +184,13 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
         assertEquals("Channel has been cancelled", exception1.message)
         reader.stop()
         reader.assertNoBytesReceived()
-        reader.assertCloseFrameReceived(mplexStreamId)
+        reader.assertCloseFrameReceived(yamuxStreamId)
     }
 
     @Test
     fun testReadPacketAfterRemoteCloses() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         muxedStream.remoteClosesWriting()
@@ -207,13 +207,13 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
         muxedStream.awaitClosed()
         reader.stop()
         reader.assertNoBytesReceived()
-        reader.assertCloseFrameReceived(mplexStreamId)
+        reader.assertCloseFrameReceived(yamuxStreamId)
     }
 
     @Test
     fun testReadPacketAfterRemoteClosesDataInBuffer() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         val random = Random.nextBytes(50000)
@@ -237,13 +237,13 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
         muxedStream.awaitClosed()
         reader.stop()
         reader.assertNoBytesReceived()
-        reader.assertCloseFrameReceived(mplexStreamId)
+        reader.assertCloseFrameReceived(yamuxStreamId)
     }
 
     @Test
     fun testNotReading() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         // It seems that the maximum of the input ByteReadChannel is 4088 bytes. So we have to provide enough data
         // to fill the input channel (~5 * 1000 bytes) and we also have to fill up the inputChannel with 16 packets.
         // So we have to provide 5 + 16 = 21 packets.
@@ -265,7 +265,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testReadPacketAfterReset() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         val random = Random.nextBytes(50000)
         muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) })
         assertFalse(muxedStream.input.isClosedForRead)
@@ -274,7 +274,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
         muxedStream.awaitClosed()
         assertTrue(muxedStream.input.isClosedForRead)
         assertTrue(muxedStream.output.isClosedForWrite)
-        reader.assertResetFrameReceived(mplexStreamId)
+        reader.assertResetFrameReceived(yamuxStreamId)
         assertStreamRemoved()
         val exception2 = assertThrows<StreamResetException> {
             muxedStream.input.readPacket(random.size)
@@ -293,7 +293,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
         repeat(1000) {
             val reader = FrameReader(this, pool)
             val random = Random.nextBytes(10000)
-            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
             muxedStream.output.writeFully(random)
             muxedStream.output.flush()
             muxedStream.close()
@@ -308,7 +308,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
         repeat(1000) {
             val reader = FrameReader(this, pool)
             val random = Random.nextBytes(10000)
-            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
             muxedStream.output.writeFully(random, 0, 5000)
             muxedStream.output.writeFully(random, 5000, 5000)
             muxedStream.output.flush()
@@ -322,7 +322,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testWritePacketAfterChannelClose() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         muxedStream.output.close()
         yield() // Give the input coroutine a chance to cancel
         val exception1 = assertThrows<CancellationException> {
@@ -336,13 +336,13 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
         muxedStream.awaitClosed()
         reader.stop()
         reader.assertNoBytesReceived()
-        reader.assertCloseFrameReceived(mplexStreamId)
+        reader.assertCloseFrameReceived(yamuxStreamId)
     }
 
     @Test
     fun testWritePacketAfterClose() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         muxedStream.close()
@@ -357,13 +357,13 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
         assertEquals("The channel was closed", exception1.message)
         reader.stop()
         reader.assertNoBytesReceived()
-        reader.assertCloseFrameReceived(mplexStreamId)
+        reader.assertCloseFrameReceived(yamuxStreamId)
     }
 
     @Test
     fun testWritePacketAfterReset() = runTest {
         val reader = FrameReader(this, pool)
-        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val muxedStream = YamuxMuxedStream(this, session, reader.frameChannel, yamuxStreamId, yamuxStreamName, pool)
         val random = Random.nextBytes(50000)
         muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) })
         assertFalse(muxedStream.input.isClosedForRead)
@@ -372,7 +372,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
         muxedStream.awaitClosed()
         assertTrue(muxedStream.input.isClosedForRead)
         assertTrue(muxedStream.output.isClosedForWrite)
-        reader.assertResetFrameReceived(mplexStreamId)
+        reader.assertResetFrameReceived(yamuxStreamId)
         assertStreamRemoved()
         val exception2 = assertThrows<StreamResetException> {
             muxedStream.output.writeFully(Random.nextBytes(100000))
@@ -385,7 +385,7 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
 
     private fun assertStreamRemoved() {
         coVerify { session.removeStream(any()) }
-        assertEquals(mplexStreamId, streamIdSlot.captured)
+        assertEquals(yamuxStreamId, streamIdSlot.captured)
     }
 
     private fun assertStreamNotRemoved() {
@@ -421,12 +421,12 @@ internal class YamuxMuxedStreamTest : TestWithLeakCheck {
             }
         }
 
-        fun assertResetFrameReceived(streamId: MplexStreamId) {
+        fun assertResetFrameReceived(streamId: YamuxStreamId) {
             assertNotNull(resetFrame)
             assertEquals(streamId, resetFrame?.streamId)
         }
 
-        fun assertCloseFrameReceived(streamId: MplexStreamId) {
+        fun assertCloseFrameReceived(streamId: YamuxStreamId) {
             assertNotNull(closeFrame)
             assertEquals(streamId, closeFrame?.streamId)
         }

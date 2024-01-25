@@ -8,11 +8,11 @@ import io.ktor.utils.io.core.toByteArray
 import io.ktor.utils.io.writeFully
 import org.erwinkok.libp2p.core.network.readUnsignedVarInt
 import org.erwinkok.libp2p.core.network.writeUnsignedVarInt
-import org.erwinkok.libp2p.muxer.yamux.MplexStreamId
+import org.erwinkok.libp2p.muxer.yamux.YamuxStreamId
 import org.erwinkok.result.Result
 import org.erwinkok.result.map
 
-internal class NewStreamFrame(id: Long, val name: String) : Frame(MplexStreamId(true, id)) {
+internal class NewStreamFrame(id: Long, val name: String) : Frame(YamuxStreamId(true, id)) {
     override val type: Int get() = NewStreamTag
 
     override fun close(): Unit = Unit

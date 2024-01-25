@@ -56,16 +56,13 @@ class YamuxMuxedStream(
     private val scope: CoroutineScope,
     private val session: Session,
     private val outputChannel: Channel<Frame>,
-    private val mplexStreamId: MplexStreamId,
+    private val yamuxStreamId: YamuxStreamId,
     override val name: String,
     override val pool: ObjectPool<ChunkBuffer>
 ) : MuxedStream {
 //    sendWindow uint32
 //
 //    memorySpan MemoryManager
-//
-//    id      uint32
-//    session *Session
 //
 //    recvWindow uint32
 //    epochStart time.Time
@@ -87,7 +84,7 @@ class YamuxMuxedStream(
     private val readerJob: ReaderJob
 
     override val id
-        get() = mplexStreamId.toString()
+        get() = yamuxStreamId.toString()
     override val jobContext: Job
         get() = _context
 
@@ -100,7 +97,7 @@ class YamuxMuxedStream(
         }.apply {
             invokeOnCompletion {
                 if (readerJob.isCompleted) {
-                    session.removeStream(mplexStreamId)
+                    session.removeStream(yamuxStreamId)
                 }
             }
         }
@@ -111,7 +108,7 @@ class YamuxMuxedStream(
         }.apply {
             invokeOnCompletion {
                 if (writerJob.isCompleted) {
-                    session.removeStream(mplexStreamId)
+                    session.removeStream(yamuxStreamId)
                 }
             }
         }
@@ -143,7 +140,7 @@ class YamuxMuxedStream(
                 if (size > 0) {
                     buffer.flip()
                     val packet = buildPacket(pool) { writeFully(buffer) }
-                    val messageFrame = MessageFrame(mplexStreamId, packet)
+                    val messageFrame = MessageFrame(yamuxStreamId, packet)
                     outputChannel.send(messageFrame)
                 }
             } catch (e: CancellationException) {
@@ -160,9 +157,9 @@ class YamuxMuxedStream(
         }
         if (!outputChannel.isClosedForSend) {
             if (channel.closedCause is StreamResetException) {
-                outputChannel.send(ResetFrame(mplexStreamId))
+                outputChannel.send(ResetFrame(yamuxStreamId))
             } else {
-                outputChannel.send(CloseFrame(mplexStreamId))
+                outputChannel.send(CloseFrame(yamuxStreamId))
             }
         }
     }
@@ -182,7 +179,7 @@ class YamuxMuxedStream(
     }
 
     override fun toString(): String {
-        return "mplex-<$mplexStreamId>"
+        return "mplex-<$yamuxStreamId>"
     }
 
     internal suspend fun remoteSendsNewMessage(packet: ByteReadPacket): Boolean {

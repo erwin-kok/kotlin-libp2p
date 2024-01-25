@@ -6,11 +6,11 @@ import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.core.ByteReadPacket
 import org.erwinkok.libp2p.core.network.readUnsignedVarInt
 import org.erwinkok.libp2p.core.network.writeUnsignedVarInt
-import org.erwinkok.libp2p.muxer.yamux.MplexStreamId
+import org.erwinkok.libp2p.muxer.yamux.YamuxStreamId
 import org.erwinkok.result.Result
 import org.erwinkok.result.map
 
-internal class MessageFrame(streamId: MplexStreamId, val packet: ByteReadPacket) : Frame(streamId) {
+internal class MessageFrame(streamId: YamuxStreamId, val packet: ByteReadPacket) : Frame(streamId) {
     override val type: Int
         get() {
             return if (streamId.initiator) MessageInitiatorTag else MessageReceiverTag
@@ -26,7 +26,7 @@ internal class MessageFrame(streamId: MplexStreamId, val packet: ByteReadPacket)
     }
 }
 
-internal suspend fun ByteReadChannel.readMessageFrame(streamId: MplexStreamId): Result<MessageFrame> {
+internal suspend fun ByteReadChannel.readMessageFrame(streamId: YamuxStreamId): Result<MessageFrame> {
     return readUnsignedVarInt()
         .map { length -> readPacket(length.toInt()) }
         .map { packet -> MessageFrame(streamId, packet) }

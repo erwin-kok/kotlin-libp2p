@@ -128,7 +128,7 @@ class Session(
     private val streamChannel = SafeChannel<MuxedStream>(16)
     private val outputChannel = SafeChannel<Frame>(16)
     private val mutex = ReentrantLock()
-    private val streams = mutableMapOf<MplexStreamId, YamuxMuxedStream>()
+    private val streams = mutableMapOf<YamuxStreamId, YamuxMuxedStream>()
     private val nextId = AtomicLong(0)
     private val isClosing = AtomicBoolean(false)
     private var closeCause: Error? = null
@@ -172,7 +172,7 @@ class Session(
         _context.complete()
     }
 
-    internal fun removeStream(streamId: MplexStreamId) {
+    internal fun removeStream(streamId: YamuxStreamId) {
         mutex.withLock {
             streams.remove(streamId)
             if (isClosing.get() && streams.isEmpty()) {
@@ -234,9 +234,9 @@ class Session(
     private suspend fun processFrame(mplexFrame: Frame) {
         val id = mplexFrame.id
         val initiator = mplexFrame.initiator
-        val mplexStreamId = MplexStreamId(!initiator, id)
+        val yamuxStreamId = YamuxStreamId(!initiator, id)
         mutex.lock()
-        val stream: YamuxMuxedStream? = streams[mplexStreamId]
+        val stream: YamuxMuxedStream? = streams[yamuxStreamId]
         when (mplexFrame) {
             is NewStreamFrame -> {
                 if (stream != null) {
@@ -244,9 +244,9 @@ class Session(
                     logger.warn { "$this: Remote creates existing new stream: $id. Ignoring." }
                 } else {
                     logger.debug { "$this: Remote creates new stream: $id" }
-                    val name = streamName(mplexFrame.name, mplexStreamId)
-                    val newStream = YamuxMuxedStream(scope, this, outputChannel, mplexStreamId, name, pool)
-                    streams[mplexStreamId] = newStream
+                    val name = streamName(mplexFrame.name, yamuxStreamId)
+                    val newStream = YamuxMuxedStream(scope, this, outputChannel, yamuxStreamId, name, pool)
+                    streams[yamuxStreamId] = newStream
                     mutex.unlock()
                     streamChannel.send(newStream)
                 }
@@ -271,21 +271,21 @@ class Session(
                         stream.remoteSendsNewMessage(builder.build())
                     }
                     if (timeout == null) {
-                        logger.warn { "$this: Reader timeout for stream: $mplexStreamId. Reader is too slow, resetting the stream." }
+                        logger.warn { "$this: Reader timeout for stream: $yamuxStreamId. Reader is too slow, resetting the stream." }
                         stream.reset()
                     }
                 } else {
                     mutex.unlock()
-                    logger.warn { "$this: Remote sends message on non-existing stream: $mplexStreamId" }
+                    logger.warn { "$this: Remote sends message on non-existing stream: $yamuxStreamId" }
                 }
             }
 
             is CloseFrame -> {
                 if (logger.isDebugEnabled) {
                     if (initiator) {
-                        logger.debug("$this: Remote closes his stream: $mplexStreamId")
+                        logger.debug("$this: Remote closes his stream: $yamuxStreamId")
                     } else {
-                        logger.debug("$this: Remote closes our stream: $mplexStreamId")
+                        logger.debug("$this: Remote closes our stream: $yamuxStreamId")
                     }
                 }
                 if (stream != null) {
@@ -293,7 +293,7 @@ class Session(
                     stream.remoteClosesWriting()
                 } else {
                     mutex.unlock()
-                    logger.debug { "$this: Remote closes non-existing stream: $mplexStreamId" }
+                    logger.debug { "$this: Remote closes non-existing stream: $yamuxStreamId" }
                 }
             }
 
@@ -323,7 +323,7 @@ class Session(
         }
         mutex.lock()
         val id = nextId.getAndIncrement()
-        val streamId = MplexStreamId(true, id)
+        val streamId = YamuxStreamId(true, id)
         logger.debug { "$this: We create stream: $id" }
         val name = streamName(newName, streamId)
         val muxedStream = YamuxMuxedStream(scope, this, outputChannel, streamId, name, pool)
@@ -333,7 +333,7 @@ class Session(
         return Ok(muxedStream)
     }
 
-    private fun streamName(name: String?, streamId: MplexStreamId): String {
+    private fun streamName(name: String?, streamId: YamuxStreamId): String {
         if (name != null) {
             return name
         }

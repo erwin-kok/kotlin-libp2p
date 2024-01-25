@@ -6,12 +6,12 @@ import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.core.Closeable
 import org.erwinkok.libp2p.core.network.readUnsignedVarInt
 import org.erwinkok.libp2p.core.network.writeUnsignedVarInt
-import org.erwinkok.libp2p.muxer.yamux.MplexStreamId
+import org.erwinkok.libp2p.muxer.yamux.YamuxStreamId
 import org.erwinkok.result.Err
 import org.erwinkok.result.Result
 import org.erwinkok.result.getOrElse
 
-sealed class Frame(val streamId: MplexStreamId) : Closeable {
+sealed class Frame(val streamId: YamuxStreamId) : Closeable {
     val initiator: Boolean get() = streamId.initiator
     val id: Long get() = streamId.id
     abstract val type: Int
@@ -41,12 +41,12 @@ internal suspend fun ByteReadChannel.readMplexFrame(): Result<Frame> {
     val id = (header shr 3).toLong()
     return when (tag) {
         Frame.NewStreamTag -> readNewStreamFrame(id)
-        Frame.MessageReceiverTag -> readMessageFrame(MplexStreamId(false, id))
-        Frame.MessageInitiatorTag -> readMessageFrame(MplexStreamId(true, id))
-        Frame.CloseReceiverTag -> readCloseFrame(MplexStreamId(false, id))
-        Frame.CloseInitiatorTag -> readCloseFrame(MplexStreamId(true, id))
-        Frame.ResetReceiverTag -> readResetFrame(MplexStreamId(false, id))
-        Frame.ResetInitiatorTag -> readResetFrame(MplexStreamId(true, id))
+        Frame.MessageReceiverTag -> readMessageFrame(YamuxStreamId(false, id))
+        Frame.MessageInitiatorTag -> readMessageFrame(YamuxStreamId(true, id))
+        Frame.CloseReceiverTag -> readCloseFrame(YamuxStreamId(false, id))
+        Frame.CloseInitiatorTag -> readCloseFrame(YamuxStreamId(true, id))
+        Frame.ResetReceiverTag -> readResetFrame(YamuxStreamId(false, id))
+        Frame.ResetInitiatorTag -> readResetFrame(YamuxStreamId(true, id))
         else -> Err("Unknown Mplex tag type '$tag'")
     }
 }

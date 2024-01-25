@@ -70,7 +70,7 @@ internal class YamuxMultiplexerTest : TestWithLeakCheck {
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
             assertEquals("newStreamName$it", muxedStream.name)
-            assertEquals(MplexStreamId(true, it.toLong()).toString(), muxedStream.id)
+            assertEquals(YamuxStreamId(true, it.toLong()).toString(), muxedStream.id)
             val actual = connectionPair.remote.input.readMplexFrame().expectNoErrors()
             assertInstanceOf(NewStreamFrame::class.java, actual)
             assertTrue(actual.initiator)
@@ -94,7 +94,7 @@ internal class YamuxMultiplexerTest : TestWithLeakCheck {
             assertEquals("aName$id", muxedStream.name)
             assertStreamHasId(false, id, muxedStream)
             val random1 = Random.nextBytes(1000)
-            connectionPair.remote.output.writeMplexFrame(MessageFrame(MplexStreamId(true, id), buildPacket(pool) { writeFully(random1) }))
+            connectionPair.remote.output.writeMplexFrame(MessageFrame(YamuxStreamId(true, id), buildPacket(pool) { writeFully(random1) }))
             connectionPair.remote.output.flush()
             assertFalse(muxedStream.input.isClosedForRead)
             val random2 = ByteArray(random1.size)
@@ -137,7 +137,7 @@ internal class YamuxMultiplexerTest : TestWithLeakCheck {
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
             assertEquals("newStreamName$it", muxedStream.name)
-            assertEquals(MplexStreamId(true, it.toLong()).toString(), muxedStream.id)
+            assertEquals(YamuxStreamId(true, it.toLong()).toString(), muxedStream.id)
             assertNewStreamFrameReceived(it, "newStreamName$it", connectionPair.remote)
             val random1 = Random.nextBytes(1000)
             assertFalse(muxedStream.output.isClosedForWrite)
@@ -158,10 +158,10 @@ internal class YamuxMultiplexerTest : TestWithLeakCheck {
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
             assertEquals("newStreamName$it", muxedStream.name)
-            assertEquals(MplexStreamId(true, it.toLong()).toString(), muxedStream.id)
+            assertEquals(YamuxStreamId(true, it.toLong()).toString(), muxedStream.id)
             assertNewStreamFrameReceived(it, "newStreamName$it", connectionPair.remote)
             val random1 = Random.nextBytes(1000)
-            connectionPair.remote.output.writeMplexFrame(MessageFrame(MplexStreamId(false, it.toLong()), buildPacket(pool) { writeFully(random1) }))
+            connectionPair.remote.output.writeMplexFrame(MessageFrame(YamuxStreamId(false, it.toLong()), buildPacket(pool) { writeFully(random1) }))
             connectionPair.remote.output.flush()
             assertFalse(muxedStream.input.isClosedForRead)
             val random2 = ByteArray(random1.size)
@@ -186,7 +186,7 @@ internal class YamuxMultiplexerTest : TestWithLeakCheck {
         assertStreamHasId(false, id, muxedStream)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
-        connectionPair.remote.output.writeMplexFrame(CloseFrame(MplexStreamId(true, id)))
+        connectionPair.remote.output.writeMplexFrame(CloseFrame(YamuxStreamId(true, id)))
         connectionPair.remote.output.flush()
         val exception = assertThrows<ClosedReceiveChannelException> {
             muxedStream.input.readPacket(10)
@@ -233,7 +233,7 @@ internal class YamuxMultiplexerTest : TestWithLeakCheck {
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
             assertEquals("newStreamName$it", muxedStream.name)
-            assertEquals(MplexStreamId(true, it.toLong()).toString(), muxedStream.id)
+            assertEquals(YamuxStreamId(true, it.toLong()).toString(), muxedStream.id)
             assertNewStreamFrameReceived(it, "newStreamName$it", connectionPair.remote)
             muxedStream.output.close()
             yield()
@@ -257,11 +257,11 @@ internal class YamuxMultiplexerTest : TestWithLeakCheck {
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
             assertEquals("newStreamName$it", muxedStream.name)
-            assertEquals(MplexStreamId(true, it.toLong()).toString(), muxedStream.id)
+            assertEquals(YamuxStreamId(true, it.toLong()).toString(), muxedStream.id)
             assertNewStreamFrameReceived(it, "newStreamName$it", connectionPair.remote)
             assertFalse(muxedStream.input.isClosedForRead)
             assertFalse(muxedStream.output.isClosedForWrite)
-            connectionPair.remote.output.writeMplexFrame(CloseFrame(MplexStreamId(false, it.toLong())))
+            connectionPair.remote.output.writeMplexFrame(CloseFrame(YamuxStreamId(false, it.toLong())))
             connectionPair.remote.output.flush()
             val exception = assertThrows<ClosedReceiveChannelException> {
                 muxedStream.input.readPacket(10)
@@ -448,7 +448,7 @@ internal class YamuxMultiplexerTest : TestWithLeakCheck {
     }
 
     private fun assertStreamHasId(initiator: Boolean, id: Long, muxedStream: MuxedStream) {
-        assertEquals(MplexStreamId(initiator, id).toString(), muxedStream.id)
+        assertEquals(YamuxStreamId(initiator, id).toString(), muxedStream.id)
     }
 
     private suspend fun assertMessageFrameReceived(expected: ByteArray, connection: Connection) {
