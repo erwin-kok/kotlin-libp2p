@@ -11,15 +11,23 @@ import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
 import org.erwinkok.libp2p.core.util.SafeChannel
+import org.erwinkok.libp2p.core.util.Timer
+import org.erwinkok.libp2p.muxer.yamux.YamuxConst.errShutdown
+import org.erwinkok.libp2p.muxer.yamux.YamuxConst.errTimeout
 import org.erwinkok.libp2p.muxer.yamux.frame.CloseFrame
 import org.erwinkok.libp2p.muxer.yamux.frame.Frame
 import org.erwinkok.libp2p.muxer.yamux.frame.MessageFrame
@@ -34,9 +42,12 @@ import org.erwinkok.result.Result
 import org.erwinkok.result.errorMessage
 import org.erwinkok.result.map
 import org.erwinkok.result.onFailure
+import org.erwinkok.result.onSuccess
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.system.measureNanoTime
+import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
@@ -52,7 +63,7 @@ class Session(
 
     override val jobContext: Job get() = _context
 
-//    rtt int64 // to be accessed atomically, in nanoseconds
+    private val rtt = AtomicLong(0) // to be accessed atomically, in nanoseconds
 
     // remoteGoAway indicates the remote side does
     // not want futher connections. Must be first for alignment.
@@ -63,12 +74,12 @@ class Session(
 //    localGoAway int32
 
     // nextStreamID is the next stream we should send. This depends if we are a client/server.
-    private val nextStreamID = AtomicLong(0)
+    private val nextStreamId = AtomicLong(0)
 
     // pings is used to track inflight pings
-//    pingLock   sync.Mutex
-//    pingID     uint32
-//    activePing *ping
+    private val pingLock = Mutex()
+    private var pingId: Long = 0L
+    private var activePing: Ping? = null
 
     // streams maps a stream id to a stream, and inflight has an entry
     // for any outgoing stream that has not yet been established. Both are
@@ -89,8 +100,9 @@ class Session(
     // sendCh is used to send messages
 //    sendCh chan []byte
 
-    // pingCh and pingCh are used to send pings and pongs
-//    pongCh, pingCh chan uint32
+    // pongChannel and pingChannel are used to send pings and pongs
+    private val pongChannel = Channel<Long>(config.pingBacklog)
+    private val pingChannel = Channel<Long>(Channel.RENDEZVOUS)
 
     // recvDoneCh is closed when recv() exits to avoid a race
     // between stream registration and stream shutdown
@@ -104,7 +116,7 @@ class Session(
     // shutdown is used to safely close a session
 //    shutdown     bool
 //    shutdownErr  error
-//    shutdownCh   chan struct{}
+    private val shutdownChannel = Channel<Unit>(Channel.RENDEZVOUS)
 //    shutdownLock sync.Mutex
 
     // keepaliveTimer is a periodic timer for keepalive messages. It's nil
@@ -113,32 +125,26 @@ class Session(
 //    keepaliveTimer  *time.Timer
 //    keepaliveActive bool
 
-    init {
-        if (client) {
-            nextStreamID.set(1)
-        } else {
-            nextStreamID.set(2)
-        }
-        if (config.enableKeepAlive) {
-
-        }
-    }
-
-
     private val streamChannel = SafeChannel<MuxedStream>(16)
     private val outputChannel = SafeChannel<Frame>(16)
     private val mutex = ReentrantLock()
     private val streams = mutableMapOf<YamuxStreamId, YamuxMuxedStream>()
-    private val nextId = AtomicLong(0)
     private val isClosing = AtomicBoolean(false)
     private var closeCause: Error? = null
     private val receiverJob: Job
+    private val measureRttJob: Job
     private val pool: ObjectPool<ChunkBuffer> get() = connection.pool
 
     init {
+        if (config.enableKeepAlive) {
+            startKeepalive()
+        }
         receiverJob = processInbound()
         processOutbound()
+        measureRttJob = startMeasureRtt()
     }
+
+    val getRtt = rtt.get().nanoseconds
 
     suspend fun openStream(name: String?): Result<MuxedStream> {
         return newNamedStream(name)
@@ -162,8 +168,58 @@ class Session(
         }
     }
 
+    suspend fun ping(): Result<Long> {
+        pingLock.lock()
+        val currentActivePing = activePing
+        if (currentActivePing != null) {
+            pingLock.unlock()
+            return currentActivePing.wait()
+        }
+
+        val newActivePing = Ping(pingId)
+        pingId++
+        activePing = newActivePing
+        pingLock.unlock()
+
+        // Send the ping request, waiting at most one connection write timeout to flush it.
+        val timer = Timer(scope, config.connectionWriteTimeout)
+
+        // Define finish lambda
+        val finish: (suspend (result: Result<Long>) -> Result<Long>) = { result ->
+            timer.stop()
+            newActivePing.finish(result)
+            pingLock.withLock {
+                activePing = null
+            }
+            result
+        }
+
+        select {
+            pingChannel.onSend(newActivePing.id) { Ok(Unit) }
+            timer.onTimeout { Err(errTimeout) }
+            shutdownChannel.onReceive { Err(errShutdown) }
+        }.onFailure {
+            finish(Err(it))
+            return Err(it)
+        }
+
+        val time = measureNanoTime {
+            timer.restart()
+            select {
+                newActivePing.onWait { Ok(Unit) }
+                timer.onTimeout { Err(errTimeout) }
+                shutdownChannel.onReceive { Err(errShutdown) }
+            }.onFailure {
+                finish(Err(it))
+                return Err(it)
+            }
+        }
+        return finish(Ok(time))
+    }
+
     override fun close() {
         isClosing.set(true)
+        measureRttJob.cancel()
         streamChannel.close()
         receiverJob.cancel()
         if (streams.isEmpty()) {
@@ -181,7 +237,7 @@ class Session(
         }
     }
 
-    private fun processInbound() = scope.launch(_context + CoroutineName("mplex-stream-input-loop")) {
+    private fun processInbound() = scope.launch(_context + CoroutineName("yamux-stream-input-loop")) {
         while (!connection.input.isClosedForRead && !streamChannel.isClosedForSend) {
             try {
                 connection.input.readMplexFrame()
@@ -193,7 +249,7 @@ class Session(
             } catch (e: CancellationException) {
                 break
             } catch (e: Exception) {
-                logger.warn { "Unexpected error occurred in mplex multiplexer input loop: ${errorMessage(e)}" }
+                logger.warn { "Unexpected error occurred in yamux multiplexer input loop: ${errorMessage(e)}" }
                 throw e
             }
         }
@@ -207,7 +263,7 @@ class Session(
         }
     }
 
-    private fun processOutbound() = scope.launch(_context + CoroutineName("mplex-stream-output-loop")) {
+    private fun processOutbound() = scope.launch(_context + CoroutineName("yamux-stream-output-loop")) {
         while (!outputChannel.isClosedForReceive && !connection.output.isClosedForWrite) {
             try {
                 val frame = outputChannel.receive()
@@ -218,7 +274,7 @@ class Session(
             } catch (e: CancellationException) {
                 break
             } catch (e: Exception) {
-                logger.warn { "Unexpected error occurred in mplex mux input loop: ${errorMessage(e)}" }
+                logger.warn { "Unexpected error occurred in yamux mux input loop: ${errorMessage(e)}" }
                 throw e
             }
         }
@@ -229,6 +285,27 @@ class Session(
             // It is safe here to close the output of all streams, closing will still process pending requests.
             streams.forEach { it.value.output.close() }
         }
+    }
+
+    private fun startMeasureRtt() = scope.launch(_context + CoroutineName("yamux-stream-rtt-loop")) {
+        measureRtt()
+        while (isActive) {
+            delay(config.measureRTTInterval)
+            measureRtt()
+        }
+    }
+
+    private suspend fun measureRtt() {
+        ping().onSuccess { newRtt ->
+            if (!rtt.compareAndSet(0L, newRtt)) {
+                val previous = rtt.get()
+                val smoothedRtt = previous / 2 + newRtt / 2
+                rtt.set(smoothedRtt)
+            }
+        }
+    }
+
+    private fun startKeepalive() {
     }
 
     private suspend fun processFrame(mplexFrame: Frame) {
@@ -319,10 +396,10 @@ class Session(
 
     private suspend fun newNamedStream(newName: String?): Result<MuxedStream> {
         if (outputChannel.isClosedForSend) {
-            return Err("$this: Mplex is closed")
+            return Err("$this: yamux is closed")
         }
         mutex.lock()
-        val id = nextId.getAndIncrement()
+        val id = nextStreamId.getAndIncrement()
         val streamId = YamuxStreamId(true, id)
         logger.debug { "$this: We create stream: $id" }
         val name = streamName(newName, streamId)
