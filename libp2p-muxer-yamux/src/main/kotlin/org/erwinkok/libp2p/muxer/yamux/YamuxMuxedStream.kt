@@ -28,10 +28,7 @@ import org.erwinkok.libp2p.core.network.StreamResetException
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
 import org.erwinkok.libp2p.core.util.SafeChannel
 import org.erwinkok.libp2p.core.util.buildPacket
-import org.erwinkok.libp2p.muxer.yamux.frame.CloseFrame
 import org.erwinkok.libp2p.muxer.yamux.frame.Frame
-import org.erwinkok.libp2p.muxer.yamux.frame.MessageFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.ResetFrame
 import org.erwinkok.result.errorMessage
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -140,8 +137,8 @@ class YamuxMuxedStream(
                 if (size > 0) {
                     buffer.flip()
                     val packet = buildPacket(pool) { writeFully(buffer) }
-                    val messageFrame = MessageFrame(yamuxStreamId, packet)
-                    outputChannel.send(messageFrame)
+//                    val messageFrame = MessageFrame(yamuxStreamId, packet)
+//                    outputChannel.send(messageFrame)
                 }
             } catch (e: CancellationException) {
                 break
@@ -157,9 +154,9 @@ class YamuxMuxedStream(
         }
         if (!outputChannel.isClosedForSend) {
             if (channel.closedCause is StreamResetException) {
-                outputChannel.send(ResetFrame(yamuxStreamId))
+//                outputChannel.send(ResetFrame(yamuxStreamId))
             } else {
-                outputChannel.send(CloseFrame(yamuxStreamId))
+//                outputChannel.send(CloseFrame(yamuxStreamId))
             }
         }
     }
@@ -196,6 +193,13 @@ class YamuxMuxedStream(
     }
 
     internal fun remoteResetsStream() {
+        inputChannel.cancel()
+        input.cancel(StreamResetException())
+        output.close(StreamResetException())
+        _context.completeExceptionally(StreamResetException())
+    }
+
+    internal fun increaseSendWindow(frame: Frame) {
         inputChannel.cancel()
         input.cancel(StreamResetException())
         output.close(StreamResetException())

@@ -11,4 +11,6 @@ object YamuxConst {
 
     val errTimeout = Error("Timeout occurred")
     val errShutdown = Error("Shutdown")
+    val errInvalidVersion = Error("Invalid protocol version")
+    val errInvalidMsgType = Error("Invalid message type")
 }

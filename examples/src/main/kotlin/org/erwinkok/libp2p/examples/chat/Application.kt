@@ -19,6 +19,7 @@ import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.PermanentAddrTTL
 import org.erwinkok.libp2p.core.record.AddressInfo
 import org.erwinkok.libp2p.ds.rocksdb.RocksDbDatastore
 import org.erwinkok.libp2p.muxer.mplex.mplex
+import org.erwinkok.libp2p.muxer.yamux.yamux
 import org.erwinkok.libp2p.security.noise.noise
 import org.erwinkok.libp2p.transport.tcp.tcp
 import org.erwinkok.multiformat.multistream.ProtocolId
@@ -42,7 +43,7 @@ fun main() {
                 return@runBlocking
             }
 
-        val datastore = RocksDbDatastore.create(scope, "/rocks")
+        val datastore = RocksDbDatastore.create(scope, "/home/erwin/rocks")
             .getOrElse {
                 logger.error { "Could not create datastore: ${errorMessage(it)}" }
                 return@runBlocking
@@ -53,6 +54,7 @@ fun main() {
             identity(localIdentity)
             muxers {
                 mplex()
+                yamux()
             }
             securityTransport {
                 noise()
@@ -81,7 +83,7 @@ fun main() {
             chatHandler(it)
         }
 
-        val peerAddress = addPeerAddress(host, "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWN2xSrWK1WeDx6DikZg6mLR3G8BzpQbrZd7dZGe7rJSZP")
+        val peerAddress = addPeerAddress(host, "/ip4/127.0.0.1/tcp/3001/p2p/QmQ5AMXn326VSwivF4iuL8AEbJngGmXfwFo3adtzSWSmM5")
 
         val basicHost = host as? BasicHost
         if (basicHost != null) {

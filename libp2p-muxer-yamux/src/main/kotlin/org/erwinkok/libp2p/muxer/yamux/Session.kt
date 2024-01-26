@@ -3,7 +3,6 @@ package org.erwinkok.libp2p.muxer.yamux
 
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
-import io.ktor.utils.io.core.BytePacketBuilder
 import io.ktor.utils.io.core.internal.ChunkBuffer
 import io.ktor.utils.io.pool.ObjectPool
 import kotlinx.atomicfu.locks.ReentrantLock
@@ -19,7 +18,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.network.Connection
@@ -28,13 +26,13 @@ import org.erwinkok.libp2p.core.util.SafeChannel
 import org.erwinkok.libp2p.core.util.Timer
 import org.erwinkok.libp2p.muxer.yamux.YamuxConst.errShutdown
 import org.erwinkok.libp2p.muxer.yamux.YamuxConst.errTimeout
-import org.erwinkok.libp2p.muxer.yamux.frame.CloseFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.DataFrame
 import org.erwinkok.libp2p.muxer.yamux.frame.Frame
-import org.erwinkok.libp2p.muxer.yamux.frame.MessageFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.NewStreamFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.ResetFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.readMplexFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.writeMplexFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.GoAwayFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.PingFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.WindowUpdateFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.readYamuxFrame
+import org.erwinkok.libp2p.muxer.yamux.frame.writeYamuxFrame
 import org.erwinkok.result.Err
 import org.erwinkok.result.Error
 import org.erwinkok.result.Ok
@@ -44,8 +42,10 @@ import org.erwinkok.result.map
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.experimental.and
 import kotlin.system.measureNanoTime
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
@@ -74,7 +74,7 @@ class Session(
 //    localGoAway int32
 
     // nextStreamID is the next stream we should send. This depends if we are a client/server.
-    private val nextStreamId = AtomicLong(0)
+    private val nextStreamId = AtomicInteger(0)
 
     // pings is used to track inflight pings
     private val pingLock = Mutex()
@@ -85,9 +85,10 @@ class Session(
     // for any outgoing stream that has not yet been established. Both are
     // protected by streamLock.
 //    numIncomingStreams uint32
-//    streams            map[uint32]*Stream
-//    inflight           map[uint32]struct{}
-//    streamLock         sync.Mutex
+    private val streams = mutableMapOf<Int, YamuxMuxedStream>()
+
+    //    inflight           map[uint32]struct{}
+    private val streamLock = ReentrantLock()
 
     // synCh acts like a semaphore. It is sized to the AcceptBacklog which
     // is assumed to be symmetric between the client and server. This allows
@@ -127,8 +128,6 @@ class Session(
 
     private val streamChannel = SafeChannel<MuxedStream>(16)
     private val outputChannel = SafeChannel<Frame>(16)
-    private val mutex = ReentrantLock()
-    private val streams = mutableMapOf<YamuxStreamId, YamuxMuxedStream>()
     private val isClosing = AtomicBoolean(false)
     private var closeCause: Error? = null
     private val receiverJob: Job
@@ -229,8 +228,8 @@ class Session(
     }
 
     internal fun removeStream(streamId: YamuxStreamId) {
-        mutex.withLock {
-            streams.remove(streamId)
+        streamLock.withLock {
+            streams.remove(streamId.id)
             if (isClosing.get() && streams.isEmpty()) {
                 outputChannel.close()
             }
@@ -240,8 +239,8 @@ class Session(
     private fun processInbound() = scope.launch(_context + CoroutineName("yamux-stream-input-loop")) {
         while (!connection.input.isClosedForRead && !streamChannel.isClosedForSend) {
             try {
-                connection.input.readMplexFrame()
-                    .map { mplexFrame -> processFrame(mplexFrame) }
+                connection.input.readYamuxFrame()
+                    .map { frame -> processFrame(frame) }
                     .onFailure {
                         closeCause = it
                         return@launch
@@ -267,7 +266,7 @@ class Session(
         while (!outputChannel.isClosedForReceive && !connection.output.isClosedForWrite) {
             try {
                 val frame = outputChannel.receive()
-                connection.output.writeMplexFrame(frame)
+                connection.output.writeYamuxFrame(frame)
                 connection.output.flush()
             } catch (e: ClosedReceiveChannelException) {
                 break
@@ -308,105 +307,142 @@ class Session(
     private fun startKeepalive() {
     }
 
-    private suspend fun processFrame(mplexFrame: Frame) {
-        val id = mplexFrame.id
-        val initiator = mplexFrame.initiator
-        val yamuxStreamId = YamuxStreamId(!initiator, id)
-        mutex.lock()
-        val stream: YamuxMuxedStream? = streams[yamuxStreamId]
-        when (mplexFrame) {
-            is NewStreamFrame -> {
-                if (stream != null) {
-                    mutex.unlock()
-                    logger.warn { "$this: Remote creates existing new stream: $id. Ignoring." }
-                } else {
-                    logger.debug { "$this: Remote creates new stream: $id" }
-                    val name = streamName(mplexFrame.name, yamuxStreamId)
-                    val newStream = YamuxMuxedStream(scope, this, outputChannel, yamuxStreamId, name, pool)
-                    streams[yamuxStreamId] = newStream
-                    mutex.unlock()
-                    streamChannel.send(newStream)
-                }
+    private suspend fun processFrame(frame: Frame) {
+        when (frame) {
+            is DataFrame, is WindowUpdateFrame -> {
+                handleStreamMessage(frame)
             }
 
-            is MessageFrame -> {
-                if (logger.isDebugEnabled) {
-                    if (initiator) {
-                        logger.debug("$this: Remote sends message on his stream: $id")
-                    } else {
-                        logger.debug("$this: Remote sends message on our stream: $id")
-                    }
-                }
-                if (stream != null) {
-                    mutex.unlock()
-                    val builder = BytePacketBuilder(pool)
-                    val data = mplexFrame.packet
-                    builder.writePacket(data.copy())
-                    // There is (almost) no backpressure. If the reader is slow/blocking, then the entire muxer is blocking.
-                    // Give the reader "ReceiveTimeout" time to process, reset stream if too slow.
-                    val timeout = withTimeoutOrNull(ReceivePushTimeout) {
-                        stream.remoteSendsNewMessage(builder.build())
-                    }
-                    if (timeout == null) {
-                        logger.warn { "$this: Reader timeout for stream: $yamuxStreamId. Reader is too slow, resetting the stream." }
-                        stream.reset()
-                    }
-                } else {
-                    mutex.unlock()
-                    logger.warn { "$this: Remote sends message on non-existing stream: $yamuxStreamId" }
-                }
-            }
-
-            is CloseFrame -> {
-                if (logger.isDebugEnabled) {
-                    if (initiator) {
-                        logger.debug("$this: Remote closes his stream: $yamuxStreamId")
-                    } else {
-                        logger.debug("$this: Remote closes our stream: $yamuxStreamId")
-                    }
-                }
-                if (stream != null) {
-                    mutex.unlock()
-                    stream.remoteClosesWriting()
-                } else {
-                    mutex.unlock()
-                    logger.debug { "$this: Remote closes non-existing stream: $yamuxStreamId" }
-                }
-            }
-
-            is ResetFrame -> {
-                if (logger.isDebugEnabled) {
-                    if (initiator) {
-                        logger.debug("$this: Remote resets his stream: $id")
-                    } else {
-                        logger.debug("$this: Remote resets our stream: $id")
-                    }
-                }
-                if (stream != null) {
-                    mutex.unlock()
-                    stream.remoteResetsStream()
-                } else {
-                    mutex.unlock()
-                    logger.debug { "$this: Remote resets non-existing stream: $id" }
-                }
-            }
+            is PingFrame -> TODO()
+            is GoAwayFrame -> TODO()
         }
-        mplexFrame.close()
+
+
+//        val id = mplexFrame.id
+//        val initiator = mplexFrame.initiator
+//        val yamuxStreamId = YamuxStreamId(!initiator, id)
+//        streamLock.lock()
+//        val stream: YamuxMuxedStream? = streams[yamuxStreamId]
+//        when (mplexFrame) {
+//            is NewStreamFrame -> {
+//            }
+//
+//            is MessageFrame -> {
+//                if (logger.isDebugEnabled) {
+//                    if (initiator) {
+//                        logger.debug("$this: Remote sends message on his stream: $id")
+//                    } else {
+//                        logger.debug("$this: Remote sends message on our stream: $id")
+//                    }
+//                }
+//                if (stream != null) {
+//                    streamLock.unlock()
+//                    val builder = BytePacketBuilder(pool)
+//                    val data = mplexFrame.packet
+//                    builder.writePacket(data.copy())
+//                    // There is (almost) no backpressure. If the reader is slow/blocking, then the entire muxer is blocking.
+//                    // Give the reader "ReceiveTimeout" time to process, reset stream if too slow.
+//                    val timeout = withTimeoutOrNull(ReceivePushTimeout) {
+//                        stream.remoteSendsNewMessage(builder.build())
+//                    }
+//                    if (timeout == null) {
+//                        logger.warn { "$this: Reader timeout for stream: $yamuxStreamId. Reader is too slow, resetting the stream." }
+//                        stream.reset()
+//                    }
+//                } else {
+//                    streamLock.unlock()
+//                    logger.warn { "$this: Remote sends message on non-existing stream: $yamuxStreamId" }
+//                }
+//            }
+//
+//            is CloseFrame -> {
+//                if (logger.isDebugEnabled) {
+//                    if (initiator) {
+//                        logger.debug("$this: Remote closes his stream: $yamuxStreamId")
+//                    } else {
+//                        logger.debug("$this: Remote closes our stream: $yamuxStreamId")
+//                    }
+//                }
+//                if (stream != null) {
+//                    streamLock.unlock()
+//                    stream.remoteClosesWriting()
+//                } else {
+//                    streamLock.unlock()
+//                    logger.debug { "$this: Remote closes non-existing stream: $yamuxStreamId" }
+//                }
+//            }
+//
+//            is ResetFrame -> {
+//                if (logger.isDebugEnabled) {
+//                    if (initiator) {
+//                        logger.debug("$this: Remote resets his stream: $id")
+//                    } else {
+//                        logger.debug("$this: Remote resets our stream: $id")
+//                    }
+//                }
+//                if (stream != null) {
+//                    streamLock.unlock()
+//                    stream.remoteResetsStream()
+//                } else {
+//                    streamLock.unlock()
+//                    logger.debug { "$this: Remote resets non-existing stream: $id" }
+//                }
+//            }
+//        }
+        frame.close()
+    }
+
+    private fun handleStreamMessage(frame: Frame): Result<Unit> {
+        val id = frame.id
+        val flags = frame.flags
+        if ((flags and Frame.SynFlag) == Frame.SynFlag) {
+            incomingStream(id)
+                .onFailure { return Err(it) }
+        }
+        val stream = streamLock.withLock {
+            streams[id]
+        }
+        if (stream == null) {
+            logger.warn { "[WARN] yamux: frame for missing stream: $id" }
+            return Ok(Unit)
+        }
+        if (frame.type == Frame.typeWindowUpdate) {
+            stream.increaseSendWindow(frame)
+            return Ok(Unit)
+        }
+
+        return Ok(Unit)
+    }
+
+
+    private fun incomingStream(id: Int): Result<Unit> {
+//                if (stream != null) {
+//                    streamLock.unlock()
+//                    logger.warn { "$this: Remote creates existing new stream: $id. Ignoring." }
+//                } else {
+//                    logger.debug { "$this: Remote creates new stream: $id" }
+//                    val name = streamName(mplexFrame.name, yamuxStreamId)
+//                    val newStream = YamuxMuxedStream(scope, this, outputChannel, yamuxStreamId, name, pool)
+//                    streams[yamuxStreamId] = newStream
+//                    streamLock.unlock()
+//                    streamChannel.send(newStream)
+//                }
+        return Ok(Unit)
     }
 
     private suspend fun newNamedStream(newName: String?): Result<MuxedStream> {
         if (outputChannel.isClosedForSend) {
             return Err("$this: yamux is closed")
         }
-        mutex.lock()
+        streamLock.lock()
         val id = nextStreamId.getAndIncrement()
         val streamId = YamuxStreamId(true, id)
         logger.debug { "$this: We create stream: $id" }
         val name = streamName(newName, streamId)
         val muxedStream = YamuxMuxedStream(scope, this, outputChannel, streamId, name, pool)
-        streams[streamId] = muxedStream
-        mutex.unlock()
-        outputChannel.send(NewStreamFrame(id, name))
+        streams[streamId.id] = muxedStream
+        streamLock.unlock()
+//        outputChannel.send(NewStreamFrame(id, name))
         return Ok(muxedStream)
     }
 
