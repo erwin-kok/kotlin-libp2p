@@ -6,10 +6,10 @@ import kotlinx.coroutines.selects.SelectClause1
 import org.erwinkok.result.Err
 import org.erwinkok.result.Result
 
-class Ping(val id: Long) {
+class Ping(val id: Int) {
     private val done = Channel<Unit>(Channel.RENDEZVOUS)
     private var result: Result<Long>? = null
-    private val pingResponse = Channel<Unit>(1)
+    val pingResponse = Channel<Unit>(1)
 
     val onWait: SelectClause1<Unit>
         get() = pingResponse.onReceive

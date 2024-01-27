@@ -3,7 +3,9 @@ package org.erwinkok.libp2p.muxer.yamux
 
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
+import io.ktor.utils.io.core.ByteReadPacket
 import io.ktor.utils.io.core.internal.ChunkBuffer
+import io.ktor.utils.io.core.writeFully
 import io.ktor.utils.io.pool.ObjectPool
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.withLock
@@ -12,33 +14,30 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
+import org.erwinkok.libp2p.core.resourcemanager.ResourceScope
+import org.erwinkok.libp2p.core.resourcemanager.ResourceScopeSpan
 import org.erwinkok.libp2p.core.util.SafeChannel
 import org.erwinkok.libp2p.core.util.Timer
-import org.erwinkok.libp2p.muxer.yamux.YamuxConst.errShutdown
-import org.erwinkok.libp2p.muxer.yamux.YamuxConst.errTimeout
-import org.erwinkok.libp2p.muxer.yamux.frame.DataFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.Frame
-import org.erwinkok.libp2p.muxer.yamux.frame.GoAwayFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.PingFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.WindowUpdateFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.readYamuxFrame
-import org.erwinkok.libp2p.muxer.yamux.frame.writeYamuxFrame
+import org.erwinkok.libp2p.core.util.buildPacket
 import org.erwinkok.result.Err
 import org.erwinkok.result.Error
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.errorMessage
-import org.erwinkok.result.map
+import org.erwinkok.result.flatMap
+import org.erwinkok.result.getOrElse
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
 import java.util.concurrent.atomic.AtomicBoolean
@@ -47,8 +46,8 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.experimental.and
 import kotlin.system.measureNanoTime
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.nanoseconds
-import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
 
@@ -57,7 +56,7 @@ class Session(
     private val config: YamuxConfig,
     private val connection: Connection,
     private val client: Boolean,
-    private val memoryManager: (() -> Result<MemoryManager>)? = { Ok(MemoryManager.NullMemoryManager) }
+    private val memoryManager: (() -> Result<ResourceScopeSpan>)?
 ) : AwaitableClosable {
     private val _context = Job(scope.coroutineContext[Job])
 
@@ -65,45 +64,41 @@ class Session(
 
     private val rtt = AtomicLong(0) // to be accessed atomically, in nanoseconds
 
-    // remoteGoAway indicates the remote side does
-    // not want futher connections. Must be first for alignment.
-//    remoteGoAway int32
+    // remoteGoAway indicates the remote side does not want further connections. Must be first for alignment.
+    private val remoteGoAway = AtomicBoolean(false)
 
-    // localGoAway indicates that we should stop
-    // accepting futher connections. Must be first for alignment.
-//    localGoAway int32
+    // localGoAway indicates that we should stop accepting further connections. Must be first for alignment.
+    private val localGoAway = AtomicBoolean(false)
 
-    // nextStreamID is the next stream we should send. This depends if we are a client/server.
+    // nextStreamID is the next stream we should send. This depends on if we are a client/server.
     private val nextStreamId = AtomicInteger(0)
 
     // pings is used to track inflight pings
     private val pingLock = Mutex()
-    private var pingId: Long = 0L
+    private var pingId: Int = 0
     private var activePing: Ping? = null
 
-    // streams maps a stream id to a stream, and inflight has an entry
-    // for any outgoing stream that has not yet been established. Both are
-    // protected by streamLock.
-//    numIncomingStreams uint32
+    // streams maps a stream id to a stream, and inflight has an entry for any outgoing stream that has not yet been established. Both are protected by streamLock.
+    private var numIncomingStreams = 0
     private val streams = mutableMapOf<Int, YamuxMuxedStream>()
 
-    //    inflight           map[uint32]struct{}
+    private val inflight = mutableSetOf<Int>()
     private val streamLock = ReentrantLock()
 
     // synCh acts like a semaphore. It is sized to the AcceptBacklog which
     // is assumed to be symmetric between the client and server. This allows
     // the client to avoid exceeding the backlog and instead blocks the open.
-//    synCh chan struct{}
+    private val synChannel = Channel<Unit>(config.acceptBacklog)
 
-    // acceptCh is used to pass ready streams to the client
-//    acceptCh chan *Stream
+    // acceptChannel is used to pass ready streams to the client
+    private val acceptChannel = SafeChannel<YamuxMuxedStream>(config.acceptBacklog)
 
     // sendCh is used to send messages
 //    sendCh chan []byte
 
     // pongChannel and pingChannel are used to send pings and pongs
-    private val pongChannel = Channel<Long>(config.pingBacklog)
-    private val pingChannel = Channel<Long>(Channel.RENDEZVOUS)
+    private val pongChannel = Channel<Int>(config.pingBacklog)
+    private val pingChannel = Channel<Int>(Channel.RENDEZVOUS)
 
     // recvDoneCh is closed when recv() exits to avoid a race
     // between stream registration and stream shutdown
@@ -115,8 +110,8 @@ class Session(
 //    sendDoneCh chan struct{}
 
     // shutdown is used to safely close a session
-//    shutdown     bool
-//    shutdownErr  error
+    private val shutdown = false
+    private val shutdownErr: Error? = null
     private val shutdownChannel = Channel<Unit>(Channel.RENDEZVOUS)
 //    shutdownLock sync.Mutex
 
@@ -126,32 +121,49 @@ class Session(
 //    keepaliveTimer  *time.Timer
 //    keepaliveActive bool
 
+    /// ***
+
     private val streamChannel = SafeChannel<MuxedStream>(16)
-    private val outputChannel = SafeChannel<Frame>(16)
+    private val outputChannel = SafeChannel<ByteReadPacket>(16)
     private val isClosing = AtomicBoolean(false)
     private var closeCause: Error? = null
     private val receiverJob: Job
-    private val measureRttJob: Job
+
+    //    private val measureRttJob: Job
     private val pool: ObjectPool<ChunkBuffer> get() = connection.pool
 
     init {
         if (config.enableKeepAlive) {
             startKeepalive()
         }
+        if (client) {
+            nextStreamId.set(1)
+        } else {
+            nextStreamId.set(2)
+        }
         receiverJob = processInbound()
         processOutbound()
-        measureRttJob = startMeasureRtt()
+//        measureRttJob = startMeasureRtt()
     }
 
     val getRtt = rtt.get().nanoseconds
 
     suspend fun openStream(name: String?): Result<MuxedStream> {
-        return newNamedStream(name)
+        if (outputChannel.isClosedForSend) {
+            return Err(YamuxConst.errSessionShutdown)
+        }
+        if (remoteGoAway.get()) {
+            return Err(YamuxConst.errRemoteGoAway)
+        }
+
+//        val stream = YamuxMuxedStream(scope, this, )
+
+        return Err("TODO")
     }
 
     suspend fun acceptStream(): Result<MuxedStream> {
         if (streamChannel.isClosedForReceive) {
-            return Err(closeCause ?: ErrShutdown)
+            return Err(closeCause ?: YamuxConst.errSessionShutdown)
         }
         return try {
             select {
@@ -159,11 +171,11 @@ class Session(
                     Ok(it)
                 }
                 receiverJob.onJoin {
-                    Err(closeCause ?: ErrShutdown)
+                    Err(closeCause ?: YamuxConst.errSessionShutdown)
                 }
             }
         } catch (e: Exception) {
-            Err(ErrShutdown)
+            Err(YamuxConst.errSessionShutdown)
         }
     }
 
@@ -195,8 +207,8 @@ class Session(
 
         select {
             pingChannel.onSend(newActivePing.id) { Ok(Unit) }
-            timer.onTimeout { Err(errTimeout) }
-            shutdownChannel.onReceive { Err(errShutdown) }
+            timer.onTimeout { Err(YamuxConst.errTimeout) }
+            shutdownChannel.onReceive { Err(YamuxConst.errSessionShutdown) }
         }.onFailure {
             finish(Err(it))
             return Err(it)
@@ -206,8 +218,8 @@ class Session(
             timer.restart()
             select {
                 newActivePing.onWait { Ok(Unit) }
-                timer.onTimeout { Err(errTimeout) }
-                shutdownChannel.onReceive { Err(errShutdown) }
+                timer.onTimeout { Err(YamuxConst.errTimeout) }
+                shutdownChannel.onReceive { Err(YamuxConst.errSessionShutdown) }
             }.onFailure {
                 finish(Err(it))
                 return Err(it)
@@ -218,7 +230,7 @@ class Session(
 
     override fun close() {
         isClosing.set(true)
-        measureRttJob.cancel()
+//        measureRttJob.cancel()
         streamChannel.close()
         receiverJob.cancel()
         if (streams.isEmpty()) {
@@ -227,46 +239,11 @@ class Session(
         _context.complete()
     }
 
-    internal fun removeStream(streamId: YamuxStreamId) {
-        streamLock.withLock {
-            streams.remove(streamId.id)
-            if (isClosing.get() && streams.isEmpty()) {
-                outputChannel.close()
-            }
-        }
-    }
-
-    private fun processInbound() = scope.launch(_context + CoroutineName("yamux-stream-input-loop")) {
-        while (!connection.input.isClosedForRead && !streamChannel.isClosedForSend) {
-            try {
-                connection.input.readYamuxFrame()
-                    .map { frame -> processFrame(frame) }
-                    .onFailure {
-                        closeCause = it
-                        return@launch
-                    }
-            } catch (e: CancellationException) {
-                break
-            } catch (e: Exception) {
-                logger.warn { "Unexpected error occurred in yamux multiplexer input loop: ${errorMessage(e)}" }
-                throw e
-            }
-        }
-    }.apply {
-        invokeOnCompletion {
-            connection.input.cancel()
-            streamChannel.cancel()
-            // do not cancel the input of the streams here, there might still be some pending frames in the input queue.
-            // instead, close the input loop gracefully.
-            streams.forEach { it.value.remoteClosesWriting() }
-        }
-    }
-
     private fun processOutbound() = scope.launch(_context + CoroutineName("yamux-stream-output-loop")) {
         while (!outputChannel.isClosedForReceive && !connection.output.isClosedForWrite) {
             try {
-                val frame = outputChannel.receive()
-                connection.output.writeYamuxFrame(frame)
+                val packet = outputChannel.receive()
+                connection.output.writePacket(packet)
                 connection.output.flush()
             } catch (e: ClosedReceiveChannelException) {
                 break
@@ -294,6 +271,11 @@ class Session(
         }
     }
 
+
+    private fun goAway(goAwayProtoErr: Int): YamuxHeader {
+        TODO("Not yet implemented")
+    }
+
     private suspend fun measureRtt() {
         ping().onSuccess { newRtt ->
             if (!rtt.compareAndSet(0L, newRtt)) {
@@ -304,98 +286,75 @@ class Session(
         }
     }
 
+    private fun extendKeepalive() {
+
+    }
+
     private fun startKeepalive() {
     }
 
-    private suspend fun processFrame(frame: Frame) {
-        when (frame) {
-            is DataFrame, is WindowUpdateFrame -> {
-                handleStreamMessage(frame)
-            }
-
-            is PingFrame -> TODO()
-            is GoAwayFrame -> TODO()
+    private suspend fun sendMessage(header: YamuxHeader, body: ByteArray? = null, timeout: Duration? = null): Result<Unit> {
+        if (outputChannel.isClosedForSend) {
+            return Err("XXX")
         }
-
-
-//        val id = mplexFrame.id
-//        val initiator = mplexFrame.initiator
-//        val yamuxStreamId = YamuxStreamId(!initiator, id)
-//        streamLock.lock()
-//        val stream: YamuxMuxedStream? = streams[yamuxStreamId]
-//        when (mplexFrame) {
-//            is NewStreamFrame -> {
-//            }
-//
-//            is MessageFrame -> {
-//                if (logger.isDebugEnabled) {
-//                    if (initiator) {
-//                        logger.debug("$this: Remote sends message on his stream: $id")
-//                    } else {
-//                        logger.debug("$this: Remote sends message on our stream: $id")
-//                    }
-//                }
-//                if (stream != null) {
-//                    streamLock.unlock()
-//                    val builder = BytePacketBuilder(pool)
-//                    val data = mplexFrame.packet
-//                    builder.writePacket(data.copy())
-//                    // There is (almost) no backpressure. If the reader is slow/blocking, then the entire muxer is blocking.
-//                    // Give the reader "ReceiveTimeout" time to process, reset stream if too slow.
-//                    val timeout = withTimeoutOrNull(ReceivePushTimeout) {
-//                        stream.remoteSendsNewMessage(builder.build())
-//                    }
-//                    if (timeout == null) {
-//                        logger.warn { "$this: Reader timeout for stream: $yamuxStreamId. Reader is too slow, resetting the stream." }
-//                        stream.reset()
-//                    }
-//                } else {
-//                    streamLock.unlock()
-//                    logger.warn { "$this: Remote sends message on non-existing stream: $yamuxStreamId" }
-//                }
-//            }
-//
-//            is CloseFrame -> {
-//                if (logger.isDebugEnabled) {
-//                    if (initiator) {
-//                        logger.debug("$this: Remote closes his stream: $yamuxStreamId")
-//                    } else {
-//                        logger.debug("$this: Remote closes our stream: $yamuxStreamId")
-//                    }
-//                }
-//                if (stream != null) {
-//                    streamLock.unlock()
-//                    stream.remoteClosesWriting()
-//                } else {
-//                    streamLock.unlock()
-//                    logger.debug { "$this: Remote closes non-existing stream: $yamuxStreamId" }
-//                }
-//            }
-//
-//            is ResetFrame -> {
-//                if (logger.isDebugEnabled) {
-//                    if (initiator) {
-//                        logger.debug("$this: Remote resets his stream: $id")
-//                    } else {
-//                        logger.debug("$this: Remote resets our stream: $id")
-//                    }
-//                }
-//                if (stream != null) {
-//                    streamLock.unlock()
-//                    stream.remoteResetsStream()
-//                } else {
-//                    streamLock.unlock()
-//                    logger.debug { "$this: Remote resets non-existing stream: $id" }
-//                }
-//            }
-//        }
-        frame.close()
+        val packet = buildPacket(pool) {
+            writeYamuxHeader(header)
+            if (body != null) {
+                writeFully(body)
+            }
+        }
+        if (timeout != null) {
+            val timeoutOrNull = withTimeoutOrNull(timeout) {
+                outputChannel.send(packet)
+            }
+            if (timeoutOrNull == null) {
+                packet.close()
+                return Err(YamuxConst.errTimeout)
+            }
+        } else {
+            outputChannel.send(packet)
+        }
+        return Ok(Unit)
     }
 
-    private fun handleStreamMessage(frame: Frame): Result<Unit> {
-        val id = frame.id
-        val flags = frame.flags
-        if ((flags and Frame.SynFlag) == Frame.SynFlag) {
+    private fun processInbound() = scope.launch(_context + CoroutineName("yamux-stream-input-loop")) {
+        while (!connection.input.isClosedForRead) {
+            try {
+//                val s = connection.input.availableForRead
+//                val b = ByteArray(s)
+//                connection.input.readFully(b)
+//                println(b)
+                connection.input.readYamuxHeader()
+                    .flatMap { header ->
+                        extendKeepalive()
+                        when (header.type) {
+                            YamuxConst.typeData, YamuxConst.typeWindowUpdate -> handleStreamMessage(header)
+                            YamuxConst.typePing -> handlePing(header)
+                            YamuxConst.typeGoAway -> handleGoAway(header)
+                            else -> Err(YamuxConst.errInvalidMsgType)
+                        }
+                    }
+                    .onFailure {
+                        closeCause = it
+                        return@launch
+                    }
+            } catch (e: CancellationException) {
+                break
+            } catch (e: Exception) {
+                logger.warn { "Unexpected error occurred in yamux multiplexer input loop: ${errorMessage(e)}" }
+                throw e
+            }
+        }
+    }.apply {
+        invokeOnCompletion {
+            connection.input.cancel()
+        }
+    }
+
+    private suspend fun handleStreamMessage(header: YamuxHeader): Result<Unit> {
+        val id = header.streamId
+        val flags = header.flags
+        if ((flags and YamuxConst.flagSyn) == YamuxConst.flagSyn) {
             incomingStream(id)
                 .onFailure { return Err(it) }
         }
@@ -403,63 +362,172 @@ class Session(
             streams[id]
         }
         if (stream == null) {
-            logger.warn { "[WARN] yamux: frame for missing stream: $id" }
+            if (header.type == YamuxConst.typeData && header.length > 0) {
+                logger.warn { "[WARN] yamux: Discarding data for stream: $id" }
+                connection.input.readPacket(header.length).close()
+            } else {
+                logger.warn { "[WARN] yamux: frame for missing stream: $id" }
+            }
             return Ok(Unit)
         }
-        if (frame.type == Frame.typeWindowUpdate) {
-            stream.increaseSendWindow(frame)
+        if (header.type == YamuxConst.typeWindowUpdate) {
+            stream.increaseSendWindow(header, flags)
             return Ok(Unit)
         }
-
+        stream.readData(header, flags, connection.input)
+            .onFailure {
+                sendMessage(goAway(YamuxConst.goAwayProtoErr))
+                return Err(it)
+            }
         return Ok(Unit)
     }
 
-
-    private fun incomingStream(id: Int): Result<Unit> {
-//                if (stream != null) {
-//                    streamLock.unlock()
-//                    logger.warn { "$this: Remote creates existing new stream: $id. Ignoring." }
-//                } else {
-//                    logger.debug { "$this: Remote creates new stream: $id" }
-//                    val name = streamName(mplexFrame.name, yamuxStreamId)
-//                    val newStream = YamuxMuxedStream(scope, this, outputChannel, yamuxStreamId, name, pool)
-//                    streams[yamuxStreamId] = newStream
-//                    streamLock.unlock()
-//                    streamChannel.send(newStream)
-//                }
+    private suspend fun handlePing(header: YamuxHeader): Result<Unit> {
+        val flags = header.flags
+        val pingId = header.length
+        if ((flags and YamuxConst.flagSyn) == YamuxConst.flagSyn) {
+            pongChannel.trySend(pingId)
+                .onFailure {
+                    logger.warn { "[WARN] yamux: dropped ping reply" }
+                }
+            return Ok(Unit)
+        }
+        pingLock.withLock {
+            val ap = activePing
+            if (ap != null && ap.id == pingId) {
+                ap.pingResponse.trySend(Unit)
+            }
+        }
         return Ok(Unit)
     }
 
-    private suspend fun newNamedStream(newName: String?): Result<MuxedStream> {
-        if (outputChannel.isClosedForSend) {
-            return Err("$this: yamux is closed")
+    private fun handleGoAway(header: YamuxHeader): Result<Unit> {
+        val code = header.length
+        when (code) {
+            YamuxConst.goAwayNormal -> {
+                remoteGoAway.set(true)
+            }
+
+            YamuxConst.goAwayProtoErr -> {
+                logger.error { "[ERR] yamux: received protocol error go away" }
+                return Err("yamux protocol error")
+            }
+
+            YamuxConst.goAwayInternalErr -> {
+                logger.error { "[ERR] yamux: received internal error go away" }
+                return Err("remote yamux internal error")
+            }
+
+            else -> {
+                logger.error { "[ERR] yamux: received unexpected go away" }
+                return Err("unexpected go away received")
+            }
         }
-        streamLock.lock()
-        val id = nextStreamId.getAndIncrement()
-        val streamId = YamuxStreamId(true, id)
-        logger.debug { "$this: We create stream: $id" }
-        val name = streamName(newName, streamId)
-        val muxedStream = YamuxMuxedStream(scope, this, outputChannel, streamId, name, pool)
-        streams[streamId.id] = muxedStream
-        streamLock.unlock()
-//        outputChannel.send(NewStreamFrame(id, name))
-        return Ok(muxedStream)
+        return Ok(Unit)
     }
 
-    private fun streamName(name: String?, streamId: YamuxStreamId): String {
-        if (name != null) {
-            return name
+    private suspend fun incomingStream(id: Int): Result<Unit> {
+//        if (client != (id % 2 == 0)) {
+//            logger.error { "[ERR] yamux: both endpoints are clients" }
+//            return Err("both yamux endpoints are clients")
+//        }
+        // Reject immediately if we are doing a go away
+        if (localGoAway.get()) {
+            return sendMessage(YamuxHeader(YamuxConst.typeWindowUpdate, YamuxConst.flagRst, id, 0))
         }
-        return String.format("stream%08x", streamId.id)
+        // Allocate a new stream
+        val mm = memoryManager
+        val span = if (mm != null) {
+            val span = mm()
+                .getOrElse {
+                    return Err("failed to create resource span: ${errorMessage(it)}")
+                }
+            span.reserveMemory(YamuxConst.initialStreamWindow, ResourceScope.ReservationPriorityAlways)
+                .onFailure {
+                    return Err(it)
+                }
+            span
+        } else {
+            null
+        }
+        val stream = YamuxMuxedStream(scope, this, id, StreamState.StreamSYNReceived, YamuxConst.initialStreamWindow, span, pool)
+        streamLock.withLock {
+            if (streams.contains(id)) {
+                logger.error { "[ERR] yamux: duplicate stream declared" }
+                sendMessage(goAway(YamuxConst.goAwayProtoErr))
+                    .onFailure {
+                        logger.warn { "[WARN] yamux: failed to send go away: ${errorMessage(it)}" }
+                    }
+                span?.done()
+                return Err(YamuxConst.errDuplicateStream)
+            }
+        }
+        if (numIncomingStreams >= config.maxIncomingStreams) {
+            // too many active streams at the same time
+            logger.warn { "[WARN] yamux: MaxIncomingStreams exceeded, forcing stream reset" }
+            val result = sendMessage(YamuxHeader(YamuxConst.typeWindowUpdate, YamuxConst.flagRst, id, 0))
+            span?.done()
+            return result
+        }
+        numIncomingStreams++
+        // Register the stream
+        streams[id] = stream
+        acceptChannel.trySend(stream)
+            .onFailure {
+                // Backlog exceeded! RST the stream
+                logger.warn { "[WARN] yamux: backlog exceeded, forcing stream reset" }
+                deleteStream(id)
+                val result = sendMessage(YamuxHeader(YamuxConst.typeWindowUpdate, YamuxConst.flagRst, id, 0))
+                span?.done()
+                return result
+            }
+        return Ok(Unit)
+    }
+
+    internal fun closeStream(id: Int) {
+        streamLock.withLock {
+            if (inflight.contains(id)) {
+                synChannel.tryReceive()
+                    .onFailure {
+                        logger.error { "[ERR] yamux: SYN tracking out of sync" }
+                    }
+                inflight.remove(id)
+            }
+            deleteStream(id)
+        }
+    }
+
+    private fun deleteStream(id: Int) {
+        val stream = streams[id] ?: return
+        if (client == (id % 2 == 0)) {
+            if (numIncomingStreams == 0) {
+                logger.error { "[ERR] yamux: numIncomingStreams underflow" }
+                // prevent the creation of any new streams
+                numIncomingStreams = Int.MAX_VALUE
+            } else {
+                numIncomingStreams--
+            }
+        }
+        streams.remove(id)
+        stream.memorySpan?.done()
+    }
+
+    internal fun establishStream(id: Int) {
+        streamLock.withLock {
+            if (inflight.contains(id)) {
+                inflight.remove(id)
+            } else {
+                logger.error { "[ERR] yamux: established stream without inflight SYN (no tracking entry)" }
+            }
+            synChannel.tryReceive()
+                .onFailure {
+                    logger.error { "[ERR] yamux: established stream without inflight SYN (didn't have semaphore)" }
+                }
+        }
     }
 
     override fun toString(): String {
         val initiator = if (client) "client" else "server"
         return "yamux-muxer<$initiator>"
-    }
-
-    companion object {
-        private val ErrShutdown = Error("session shut down")
-        private val ReceivePushTimeout = 5.seconds
     }
 }

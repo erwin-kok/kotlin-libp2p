@@ -1,31 +1,38 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.muxer.yamux
 
-//
-//internal class YamuxMultiplexerTest : TestWithLeakCheck {
-//    override val pool = VerifyingChunkBufferPool()
-//
-//    private val maxStreamId = 0x1000000000000000L
-//
+import io.ktor.utils.io.core.ByteReadPacket
+import io.ktor.utils.io.core.writeFully
+import org.erwinkok.libp2p.core.util.buildPacket
+import org.erwinkok.libp2p.testing.TestWithLeakCheck
+import org.erwinkok.libp2p.testing.VerifyingChunkBufferPool
+import kotlin.random.Random
+
+
+internal class YamuxMultiplexerTest : TestWithLeakCheck {
+    override val pool = VerifyingChunkBufferPool()
+
+    private val maxStreamId = 0x1000000000000000L
+
 //    @Test
 //    fun remoteRequestsNewStream() = runTest {
 //        val connectionPair = TestConnection(pool)
-//        val mplexMultiplexer = YamuxStreamMuxerConnection(Session(this, YamuxConfig(), connectionPair.local, true))
+//        val yamuxMultiplexer = YamuxStreamMuxerConnection(Session(this, YamuxConfig(), connectionPair.local, true, null))
 //        repeat(1000) {
 //            val id = randomId()
-//            connectionPair.remote.output.writeYamuxFrame(NewStreamFrame(id, "aName$id"))
+//            connectionPair.remote.output.writePacket(createPacket(YamuxConst.flagSyn))
 //            connectionPair.remote.output.flush()
-//            val muxedStream = mplexMultiplexer.acceptStream().expectNoErrors()
+//            val muxedStream = yamuxMultiplexer.acceptStream().expectNoErrors()
 //            assertEquals("aName$id", muxedStream.name)
-//            assertStreamHasId(false, id, muxedStream)
+////            assertStreamHasId(false, id, muxedStream)
 //            muxedStream.close()
-//            assertCloseFrameReceived(connectionPair.remote)
+////            assertCloseFrameReceived(connectionPair.remote)
 //        }
-//        mplexMultiplexer.close()
-//        mplexMultiplexer.awaitClosed()
+//        yamuxMultiplexer.close()
+//        yamuxMultiplexer.awaitClosed()
 //    }
-//
-//    @Test
+
+    //    @Test
 //    fun localRequestNewStream() = runTest {
 //        val connectionPair = TestConnection(pool)
 //        val mplexMultiplexer = YamuxStreamMuxerConnection(Session(this, YamuxConfig(), connectionPair.local, true))
@@ -405,9 +412,20 @@ package org.erwinkok.libp2p.muxer.yamux
 //        coAssertErrorResult("session shut down") { mux.acceptStream() }
 //    }
 //
-//    private fun randomId(): Long {
-//        return Random.nextLong(maxStreamId)
-//    }
+
+    private fun createPacket(type: Byte, flags: Short, streamId: Int, body: ByteArray? = null): ByteReadPacket {
+        return buildPacket(pool) {
+            val size = body?.size ?: 0
+            writeYamuxHeader(YamuxHeader(type, flags, streamId, size))
+            if (body != null) {
+                writeFully(body)
+            }
+        }
+    }
+
+    private fun randomId(): Long {
+        return Random.nextLong(maxStreamId)
+    }
 //
 //    private fun assertStreamHasId(initiator: Boolean, id: Long, muxedStream: MuxedStream) {
 //        assertEquals(YamuxStreamId(initiator, id).toString(), muxedStream.id)
@@ -437,4 +455,4 @@ package org.erwinkok.libp2p.muxer.yamux
 //        val frame = connection.input.readYamuxFrame().expectNoErrors()
 //        assertTrue(frame is CloseFrame)
 //    }
-//}
+}

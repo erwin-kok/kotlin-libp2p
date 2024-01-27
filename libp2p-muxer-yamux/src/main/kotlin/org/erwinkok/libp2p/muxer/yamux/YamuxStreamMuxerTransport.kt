@@ -7,42 +7,25 @@ import org.erwinkok.libp2p.core.network.streammuxer.StreamMuxerConnection
 import org.erwinkok.libp2p.core.network.streammuxer.StreamMuxerTransport
 import org.erwinkok.libp2p.core.network.streammuxer.StreamMuxerTransportFactory
 import org.erwinkok.libp2p.core.resourcemanager.PeerScope
-import org.erwinkok.libp2p.core.resourcemanager.ResourceScopeSpan
-import org.erwinkok.libp2p.muxer.yamux.YamuxConst.initialStreamWindow
 import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.Err
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 import org.erwinkok.result.getOrElse
-import org.erwinkok.result.map
 import org.erwinkok.result.onFailure
 import kotlin.time.Duration
-
-class MemoryManagerWrapper(private val scope: ResourceScopeSpan) : MemoryManager {
-    override fun reserveMemory(size: Int, prio: UByte): Result<Unit> {
-        return scope.reserveMemory(size, prio)
-    }
-
-    override fun releaseMemory(size: Int) {
-        return scope.releaseMemory(size)
-    }
-
-    override fun done() {
-        return scope.done()
-    }
-}
 
 class YamuxStreamMuxerTransport private constructor(
     private val coroutineScope: CoroutineScope,
 ) : StreamMuxerTransport {
     private val config = YamuxConfig(
-        maxIncomingStreams = UInt.MAX_VALUE,
-        initialStreamWindowSize = initialStreamWindow,
+        maxIncomingStreams = Int.MAX_VALUE,
+        initialStreamWindowSize = YamuxConst.initialStreamWindow,
     )
 
     override suspend fun newConnection(connection: Connection, initiator: Boolean, scope: PeerScope?): Result<StreamMuxerConnection> {
         val span = if (scope != null) {
-            { scope.beginSpan().map { MemoryManagerWrapper(it) } }
+            { scope.beginSpan() }
         } else {
             null
         }
@@ -79,7 +62,7 @@ class YamuxStreamMuxerTransport private constructor(
         if (config.maxStreamWindowSize < config.initialStreamWindowSize) {
             return Err("MaxStreamWindowSize must be larger than the InitialStreamWindowSize")
         }
-        if (config.maxMessageSize < 1024u) {
+        if (config.maxMessageSize < 1024) {
             return Err("MaxMessageSize must be greater than a kilobyte")
         }
         if (config.writeCoalesceDelay < Duration.ZERO) {

@@ -34,15 +34,15 @@ data class YamuxConfig(
     // MaxIncomingStreams is maximum number of concurrent incoming streams
     // that we accept. If the peer tries to open more streams, those will be
     // reset immediately.
-    val maxIncomingStreams: UInt = 1000u,
+    val maxIncomingStreams: Int = 1000,
 
     // InitialStreamWindowSize is used to control the initial
     // window size that we allow for a stream.
-    val initialStreamWindowSize: UInt = initialStreamWindow,
+    val initialStreamWindowSize: Int = initialStreamWindow,
 
     // MaxStreamWindowSize is used to control the maximum
     // window size that we allow for a stream.
-    val maxStreamWindowSize: UInt = maxStreamWindow,
+    val maxStreamWindowSize: Int = maxStreamWindow,
 
     // WriteCoalesceDelay is the maximum amount of time we'll delay
     // coalescing a packet before sending it. This should be on the order of
@@ -51,5 +51,5 @@ data class YamuxConfig(
 
     // MaxMessageSize is the maximum size of a message that we'll send on a
     // stream. This ensures that a single stream doesn't hog a connection.
-    val maxMessageSize: UInt = 64u * 1024u,
+    val maxMessageSize: Int = 64 * 1024,
 )
