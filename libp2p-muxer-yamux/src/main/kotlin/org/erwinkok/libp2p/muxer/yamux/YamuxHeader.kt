@@ -12,7 +12,7 @@ import org.erwinkok.result.Result
 
 private val logger = KotlinLogging.logger {}
 
-class YamuxHeader(val type: Byte, val flags: Short, val streamId: Int, val length: Int) {
+class YamuxHeader(val type: FrameType, val flags: Flags, val streamId: Int, val length: Int) {
     override fun toString(): String {
         return "type=$type, flags: $flags, id=$streamId, length=$length"
     }
@@ -28,16 +28,18 @@ internal suspend fun ByteReadChannel.readYamuxHeader(): Result<YamuxHeader> {
         logger.error { "yamux: Invalid protocol version $version" }
         return Err(YamuxConst.errInvalidVersion)
     }
-    if (type < YamuxConst.typeData || type > YamuxConst.typeGoAway) {
-        return Err(YamuxConst.errInvalidMsgType)
+    return Result.zip(
+        { FrameType.fromInt(type) },
+        { Flags.fromShort(flags) },
+    ) { t, f ->
+        Ok(YamuxHeader(t, f, streamId, length))
     }
-    return Ok(YamuxHeader(type, flags, streamId, length))
 }
 
 internal fun BytePacketBuilder.writeYamuxHeader(header: YamuxHeader) {
     writeByte(YamuxConst.protoVersion)
-    writeByte(header.type)
-    writeShort(header.flags)
+    writeByte(header.type.code)
+    writeShort(header.flags.code)
     writeInt(header.streamId)
     writeInt(header.length)
 }

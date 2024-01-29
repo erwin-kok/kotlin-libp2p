@@ -413,7 +413,7 @@ internal class YamuxMultiplexerTest : TestWithLeakCheck {
 //    }
 //
 
-    private fun createPacket(type: Byte, flags: Short, streamId: Int, body: ByteArray? = null): ByteReadPacket {
+    private fun createPacket(type: FrameType, flags: Flags, streamId: Int, body: ByteArray? = null): ByteReadPacket {
         return buildPacket(pool) {
             val size = body?.size ?: 0
             writeYamuxHeader(YamuxHeader(type, flags, streamId, size))

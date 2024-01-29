@@ -41,7 +41,6 @@ import org.erwinkok.result.errorMessage
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.experimental.and
 
 enum class StreamState {
     StreamInit,
@@ -226,10 +225,10 @@ class YamuxMuxedStream(
         session.closeStream(streamId)
     }
 
-    private suspend fun processFlags(flags: Short) {
+    private suspend fun processFlags(flags: Flags) {
         var closeStream = false
 
-        if ((flags and YamuxConst.flagAck) == YamuxConst.flagAck) {
+        if (flags.hasFlag(Flag.flagAck)) {
             stateLock.withLock {
                 if (state == StreamState.StreamSYNSent) {
                     state = StreamState.StreamEstablished
@@ -238,7 +237,7 @@ class YamuxMuxedStream(
             session.establishStream(streamId)
         }
 
-        if ((flags and YamuxConst.flagFin) == YamuxConst.flagFin) {
+        if (flags.hasFlag(Flag.flagFin)) {
             var notify = false
             stateLock.withLock {
                 if (readState == HalfStreamState.HalfOpen) {
@@ -256,7 +255,7 @@ class YamuxMuxedStream(
             }
         }
 
-        if ((flags and YamuxConst.flagRst) == YamuxConst.flagRst) {
+        if (flags.hasFlag(Flag.flagRst)) {
             stateLock.withLock {
                 if (readState == HalfStreamState.HalfOpen) {
                     readState = HalfStreamState.HalfReset
@@ -280,14 +279,14 @@ class YamuxMuxedStream(
 //        asyncNotify(s.sendNotifyCh)
     }
 
-    internal suspend fun increaseSendWindow(header: YamuxHeader, flags: Short) {
+    internal suspend fun increaseSendWindow(header: YamuxHeader, flags: Flags) {
         processFlags(flags)
         // Increase window, unblock a sender
         sendWindow.addAndGet(header.length)
 //        asyncNotify(s.sendNotifyCh)
     }
 
-    internal suspend fun readData(header: YamuxHeader, flags: Short, input: ByteReadChannel): Result<Unit> {
+    internal suspend fun readData(header: YamuxHeader, flags: Flags, input: ByteReadChannel): Result<Unit> {
         processFlags(flags)
 
         // Check that our recv window is not exceeded

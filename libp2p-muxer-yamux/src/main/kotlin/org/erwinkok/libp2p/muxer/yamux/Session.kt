@@ -38,13 +38,13 @@ import org.erwinkok.result.Result
 import org.erwinkok.result.errorMessage
 import org.erwinkok.result.flatMap
 import org.erwinkok.result.getOrElse
+import org.erwinkok.result.map
 import org.erwinkok.result.onFailure
 import org.erwinkok.result.onSuccess
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.experimental.and
 import kotlin.system.measureNanoTime
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.nanoseconds
@@ -272,7 +272,7 @@ class Session(
     }
 
 
-    private fun goAway(goAwayProtoErr: Int): YamuxHeader {
+    private fun goAway(goAwayProtoErr: GoAwayType): YamuxHeader {
         TODO("Not yet implemented")
     }
 
@@ -328,10 +328,9 @@ class Session(
                     .flatMap { header ->
                         extendKeepalive()
                         when (header.type) {
-                            YamuxConst.typeData, YamuxConst.typeWindowUpdate -> handleStreamMessage(header)
-                            YamuxConst.typePing -> handlePing(header)
-                            YamuxConst.typeGoAway -> handleGoAway(header)
-                            else -> Err(YamuxConst.errInvalidMsgType)
+                            FrameType.TypeData, FrameType.TypeWindowUpdate -> handleStreamMessage(header)
+                            FrameType.TypePing -> handlePing(header)
+                            FrameType.TypeGoAway -> handleGoAway(header)
                         }
                     }
                     .onFailure {
@@ -354,7 +353,7 @@ class Session(
     private suspend fun handleStreamMessage(header: YamuxHeader): Result<Unit> {
         val id = header.streamId
         val flags = header.flags
-        if ((flags and YamuxConst.flagSyn) == YamuxConst.flagSyn) {
+        if (flags.hasFlag(Flag.flagSyn)) {
             incomingStream(id)
                 .onFailure { return Err(it) }
         }
@@ -362,7 +361,7 @@ class Session(
             streams[id]
         }
         if (stream == null) {
-            if (header.type == YamuxConst.typeData && header.length > 0) {
+            if (header.type == FrameType.TypeData && header.length > 0) {
                 logger.warn { "[WARN] yamux: Discarding data for stream: $id" }
                 connection.input.readPacket(header.length).close()
             } else {
@@ -370,13 +369,13 @@ class Session(
             }
             return Ok(Unit)
         }
-        if (header.type == YamuxConst.typeWindowUpdate) {
+        if (header.type == FrameType.TypeWindowUpdate) {
             stream.increaseSendWindow(header, flags)
             return Ok(Unit)
         }
         stream.readData(header, flags, connection.input)
             .onFailure {
-                sendMessage(goAway(YamuxConst.goAwayProtoErr))
+                sendMessage(goAway(GoAwayType.GoAwayProtoError))
                 return Err(it)
             }
         return Ok(Unit)
@@ -385,7 +384,7 @@ class Session(
     private suspend fun handlePing(header: YamuxHeader): Result<Unit> {
         val flags = header.flags
         val pingId = header.length
-        if ((flags and YamuxConst.flagSyn) == YamuxConst.flagSyn) {
+        if (flags.hasFlag(Flag.flagSyn)) {
             pongChannel.trySend(pingId)
                 .onFailure {
                     logger.warn { "[WARN] yamux: dropped ping reply" }
@@ -402,28 +401,25 @@ class Session(
     }
 
     private fun handleGoAway(header: YamuxHeader): Result<Unit> {
-        val code = header.length
-        when (code) {
-            YamuxConst.goAwayNormal -> {
-                remoteGoAway.set(true)
-            }
+        return GoAwayType.fromInt(header.length)
+            .map { code ->
+                when (code) {
+                    GoAwayType.GoAwayNormal -> {
+                        remoteGoAway.set(true)
+                        Ok(Unit)
+                    }
 
-            YamuxConst.goAwayProtoErr -> {
-                logger.error { "[ERR] yamux: received protocol error go away" }
-                return Err("yamux protocol error")
-            }
+                    GoAwayType.GoAwayProtoError -> {
+                        logger.error { "[ERR] yamux: received protocol error go away" }
+                        Err("yamux protocol error")
+                    }
 
-            YamuxConst.goAwayInternalErr -> {
-                logger.error { "[ERR] yamux: received internal error go away" }
-                return Err("remote yamux internal error")
+                    GoAwayType.GoAwayInternalError -> {
+                        logger.error { "[ERR] yamux: received internal error go away" }
+                        Err("remote yamux internal error")
+                    }
+                }
             }
-
-            else -> {
-                logger.error { "[ERR] yamux: received unexpected go away" }
-                return Err("unexpected go away received")
-            }
-        }
-        return Ok(Unit)
     }
 
     private suspend fun incomingStream(id: Int): Result<Unit> {
@@ -433,7 +429,7 @@ class Session(
 //        }
         // Reject immediately if we are doing a go away
         if (localGoAway.get()) {
-            return sendMessage(YamuxHeader(YamuxConst.typeWindowUpdate, YamuxConst.flagRst, id, 0))
+            return sendMessage(YamuxHeader(FrameType.TypeWindowUpdate, Flags.of(Flag.flagRst), id, 0))
         }
         // Allocate a new stream
         val mm = memoryManager
@@ -454,7 +450,7 @@ class Session(
         streamLock.withLock {
             if (streams.contains(id)) {
                 logger.error { "[ERR] yamux: duplicate stream declared" }
-                sendMessage(goAway(YamuxConst.goAwayProtoErr))
+                sendMessage(goAway(GoAwayType.GoAwayProtoError))
                     .onFailure {
                         logger.warn { "[WARN] yamux: failed to send go away: ${errorMessage(it)}" }
                     }
@@ -465,7 +461,7 @@ class Session(
         if (numIncomingStreams >= config.maxIncomingStreams) {
             // too many active streams at the same time
             logger.warn { "[WARN] yamux: MaxIncomingStreams exceeded, forcing stream reset" }
-            val result = sendMessage(YamuxHeader(YamuxConst.typeWindowUpdate, YamuxConst.flagRst, id, 0))
+            val result = sendMessage(YamuxHeader(FrameType.TypeWindowUpdate, Flags.of(Flag.flagRst), id, 0))
             span?.done()
             return result
         }
@@ -477,7 +473,7 @@ class Session(
                 // Backlog exceeded! RST the stream
                 logger.warn { "[WARN] yamux: backlog exceeded, forcing stream reset" }
                 deleteStream(id)
-                val result = sendMessage(YamuxHeader(YamuxConst.typeWindowUpdate, YamuxConst.flagRst, id, 0))
+                val result = sendMessage(YamuxHeader(FrameType.TypeWindowUpdate, Flags.of(Flag.flagRst), id, 0))
                 span?.done()
                 return result
             }
