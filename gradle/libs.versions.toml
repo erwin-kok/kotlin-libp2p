@@ -21,7 +21,7 @@ ktor = "2.2.4"
 logback-classic = "1.4.14"
 mockk = "1.13.9"
 multiformat = "1.1.0"
-noise-java = "1.0.0"
+noise-java = "0.1.1"
 protobuf = "3.25.2"
 reflections = "0.10.2"
 result-monad = "1.4.0"
@@ -66,7 +66,7 @@ kotlin-logging = { module = "io.github.microutils:kotlin-logging-jvm", version.r
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-classic" }
 multiformat = { module = "org.erwinkok.multiformat:multiformat", version.ref = "multiformat" }
-noise-java = { module = "tech.pegasys:noise-java", version.ref = "noise-java" }
+noise-java = { module = "org.signal.forks:noise-java", version.ref = "noise-java" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 reflections = { module = "org.reflections:reflections", version.ref = "reflections" }
 result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "result-monad" }
