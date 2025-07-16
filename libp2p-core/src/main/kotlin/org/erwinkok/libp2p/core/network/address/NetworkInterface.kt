@@ -27,7 +27,7 @@ object NetworkInterface {
                     .combine()
                     .getOrElse { return Err(it) },
             )
-        } catch (e: SocketException) {
+        } catch (_: SocketException) {
             logger.error { "Could not determine networkInterfaces" }
             Err("Could not determine networkInterfaces")
         }

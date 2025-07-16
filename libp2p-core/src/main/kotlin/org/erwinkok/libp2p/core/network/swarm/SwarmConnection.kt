@@ -90,7 +90,7 @@ class SwarmConnection(
                                 muxedStream.reset()
                             }
                         }
-                } catch (e: StreamResetException) {
+                } catch (_: StreamResetException) {
                     // The stream was reset. That's fine here.
                     // We just continue accepting and handling a new stream.
                 }

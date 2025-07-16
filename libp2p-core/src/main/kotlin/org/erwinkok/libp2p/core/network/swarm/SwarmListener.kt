@@ -135,8 +135,8 @@ class SwarmListener(
                         .onFailure {
                             logger.warn { "swarm-listener-$address could not accept connection: ${errorMessage(it)}" }
                         }
-                } catch (e: CancellationException) {
-                    // Job is cancelled, break the while loop
+                } catch (_: CancellationException) {
+                    // Job is canceled, break the while loop
                     listener.close()
                     break
                 }

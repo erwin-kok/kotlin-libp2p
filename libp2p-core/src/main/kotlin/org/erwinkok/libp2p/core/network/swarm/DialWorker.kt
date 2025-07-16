@@ -76,9 +76,9 @@ internal class DialWorker(
                         }
                     }
                 }
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 // Do nothing...
-            } catch (e: ClosedReceiveChannelException) {
+            } catch (_: ClosedReceiveChannelException) {
                 // Do nothing...
             } catch (e: Exception) {
                 logger.warn { "Unexpected error occurred in swarm-dialer-$peerId: ${errorMessage(e)}" }

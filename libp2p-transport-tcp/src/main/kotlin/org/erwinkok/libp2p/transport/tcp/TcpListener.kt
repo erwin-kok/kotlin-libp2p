@@ -42,7 +42,7 @@ class TcpListener(
                     val transportConnection = TcpTransportConnection(socket, bindAddress, remoteAddress, pool)
                     return upgrader.upgradeInbound(transport, transportConnection)
                 }
-        } catch (e: ClosedChannelException) {
+        } catch (_: ClosedChannelException) {
             return Err("Could not accept connection, channel was closed")
         }
     }

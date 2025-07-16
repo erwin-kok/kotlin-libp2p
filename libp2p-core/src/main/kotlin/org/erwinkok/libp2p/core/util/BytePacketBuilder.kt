@@ -50,7 +50,7 @@ fun ByteReadPacket.readUnsignedVarInt(): Result<ULong> {
     return UVarInt.readUnsignedVarInt {
         try {
             Ok(readByte().toUByte())
-        } catch (e: EOFException) {
+        } catch (_: EOFException) {
             Err(Errors.EndOfStream)
         }
     }
@@ -65,7 +65,7 @@ fun BytePacketBuilder.writeUnsignedVarInt(x: ULong): Result<Int> {
         try {
             this.writeByte(it)
             Ok(Unit)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Err(Errors.EndOfStream)
         }
     }

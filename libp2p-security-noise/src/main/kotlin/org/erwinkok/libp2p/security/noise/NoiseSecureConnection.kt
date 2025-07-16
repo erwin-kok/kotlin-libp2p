@@ -76,13 +76,13 @@ class NoiseSecureConnection(
                 val decryptLength = receiverCipherState.decryptWithAd(null, decryptBuffer, 0, decryptBuffer, 0, length)
                 channel.writeFully(decryptBuffer, 0, decryptLength)
                 channel.flush()
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 break
-            } catch (e: ClosedReceiveChannelException) {
+            } catch (_: ClosedReceiveChannelException) {
                 // insecureConnection.input has been closed
                 channel.close(IOException("Failed reading from closed connection"))
                 break
-            } catch (e: SocketException) {
+            } catch (_: SocketException) {
                 channel.close(IOException("Failed reading from closed connection"))
                 break
             } catch (e: Exception) {
@@ -114,7 +114,7 @@ class NoiseSecureConnection(
                         left -= length
                     }
                 }
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 break
             } catch (e: Exception) {
                 logger.warn { "Unexpected error occurred in noise output loop: ${errorMessage(e)}" }

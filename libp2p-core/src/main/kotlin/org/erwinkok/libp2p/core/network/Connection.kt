@@ -39,7 +39,7 @@ interface Connection : Utf8Connection, AwaitableClosable, DisposableHandle {
                         return Err("message did not have trailing newline")
                     }
                     return Ok(String(bytes).trim { it <= ' ' })
-                } catch (e: ClosedReceiveChannelException) {
+                } catch (_: ClosedReceiveChannelException) {
                     return Err(Errors.EndOfStream)
                 }
             }
@@ -72,7 +72,7 @@ suspend fun ByteReadChannel.readUnsignedVarInt(): Result<ULong> {
     return UVarInt.coReadUnsignedVarInt { _ ->
         try {
             Ok(readByte().toUByte())
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Err(Errors.EndOfStream)
         }
     }

@@ -232,7 +232,7 @@ class AddressBookRecord(private val addressStreamManager: AddressStreamManager, 
         fun deserialize(addressStreamManager: AddressStreamManager, datastore: Datastore, bytes: ByteArray): Result<AddressBookRecord> {
             return try {
                 fromDbAddressBookRecord(addressStreamManager, datastore, DbPeerstore.AddressBookRecord.parseFrom(bytes))
-            } catch (e: InvalidProtocolBufferException) {
+            } catch (_: InvalidProtocolBufferException) {
                 Err("Could not parse protocol buffer")
             }
         }

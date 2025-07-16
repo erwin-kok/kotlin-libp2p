@@ -259,7 +259,7 @@ class AddressStore private constructor(
                         }
                     delay(gcPurgeInterval)
                 }
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 // Do nothing, just return...
             }
         }

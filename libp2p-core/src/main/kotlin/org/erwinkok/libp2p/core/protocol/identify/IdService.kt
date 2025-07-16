@@ -120,7 +120,7 @@ class IdService(
                     triggerPushes.receive()
                     sendPushes()
                 }
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 // Do nothing
             }
         }

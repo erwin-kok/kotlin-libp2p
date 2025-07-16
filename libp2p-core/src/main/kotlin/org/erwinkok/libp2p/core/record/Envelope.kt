@@ -47,7 +47,7 @@ class Envelope(
                             .build()
                             .toByteArray(),
                     )
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     Err("Could not build proto buffer envelope")
                 }
             }
@@ -141,11 +141,11 @@ class Envelope(
                 val envelope = DbEnvelope.Envelope.parseFrom(data)
                 val publicKey = try {
                     CryptoUtil.convertPublicKey(envelope.publicKey).getOrThrow()
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     return Err("Could not convert public key")
                 }
                 Ok(Envelope(publicKey, envelope.payloadType.toByteArray(), envelope.payload.toByteArray(), envelope.signature.toByteArray()))
-            } catch (e: InvalidProtocolBufferException) {
+            } catch (_: InvalidProtocolBufferException) {
                 Err("Could not parse from proto buffer.")
             }
         }

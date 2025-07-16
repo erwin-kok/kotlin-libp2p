@@ -83,7 +83,7 @@ class PingService(
                     logger.debug { "Ping timeout with peer ${stream.connection.remoteIdentity.peerId}" }
                     stream.close()
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // This is fine. The stream could be open and waiting for input in readFully.
                 // The peer can (and this is usual) close the stream. This will generate an
                 // exception, but this is not a protocol error.
@@ -128,7 +128,7 @@ class PingService(
                             close()
                         }
                 }
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 // Do nothing...
             }
             close()

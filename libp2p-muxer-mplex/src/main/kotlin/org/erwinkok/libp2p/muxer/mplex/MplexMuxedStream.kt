@@ -91,7 +91,7 @@ class MplexMuxedStream(
                     channel.writePacket(it)
                     channel.flush()
                 }
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 break
             } catch (e: Exception) {
                 logger.warn { "Unexpected error occurred in mplex mux input loop: ${errorMessage(e)}" }
@@ -114,9 +114,9 @@ class MplexMuxedStream(
                     val messageFrame = MessageFrame(mplexStreamId, packet)
                     outputChannel.send(messageFrame)
                 }
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 break
-            } catch (e: ClosedSendChannelException) {
+            } catch (_: ClosedSendChannelException) {
                 break
             } catch (e: Exception) {
                 logger.warn { "Unexpected error occurred in mplex mux output loop: ${errorMessage(e)}" }

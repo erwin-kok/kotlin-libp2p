@@ -92,7 +92,7 @@ class ObservedAddressManager(
                 try {
                     val observation = observationChannel.receive()
                     maybeRecordObservation(observation.connection, observation.observed)
-                } catch (e: ClosedReceiveChannelException) {
+                } catch (_: ClosedReceiveChannelException) {
                     break
                 }
             }

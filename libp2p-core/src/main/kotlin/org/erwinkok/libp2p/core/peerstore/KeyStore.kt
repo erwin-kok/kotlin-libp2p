@@ -262,7 +262,7 @@ class KeyStore private constructor(
                         "sha2-512", "sha512" -> SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
                         else -> null
                     }
-                } catch (e: NoSuchAlgorithmException) {
+                } catch (_: NoSuchAlgorithmException) {
                     null
                 }
             return if (factory == null) {

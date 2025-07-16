@@ -58,7 +58,7 @@ internal class TimedPriorityQueue<T : TimedQueueElement>(
                     } else if (inputChannel.isClosedForReceive && priorityQueue.isEmpty()) {
                         outputChannel.close()
                     }
-                } catch (e: CancellationException) {
+                } catch (_: CancellationException) {
                     break
                 } catch (e: Exception) {
                     logger.warn { "Unexpected error occurred in timed priority queue: ${errorMessage(e)}" }
@@ -120,7 +120,7 @@ internal class TimedPriorityQueue<T : TimedQueueElement>(
             if (priorityQueue.size == 0) {
                 try {
                     priorityQueue.add(inputChannel.receive())
-                } catch (e: ClosedReceiveChannelException) {
+                } catch (_: ClosedReceiveChannelException) {
                     break
                 }
             } else if (priorityQueue.size < capacity) {
