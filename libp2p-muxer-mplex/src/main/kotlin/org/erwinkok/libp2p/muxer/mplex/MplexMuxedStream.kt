@@ -3,6 +3,7 @@
 
 package org.erwinkok.libp2p.muxer.mplex
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.network.util.DefaultByteBufferPool
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
@@ -27,7 +28,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.channels.consumeEach
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.network.StreamResetException
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
 import org.erwinkok.libp2p.core.util.SafeChannel

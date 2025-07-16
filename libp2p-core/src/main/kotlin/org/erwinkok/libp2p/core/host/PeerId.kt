@@ -104,7 +104,7 @@ class PeerId private constructor(val multihash: Multihash) {
         //
         // This currently defaults to true for backwards compatibility but will likely
         // be set to false by default when an upgrade path is determined.
-        private const val AdvancedEnableInlining = true
+        private const val advancedEnableInlining = true
         private const val maxInlineKeyLength = 42
 
         val Null = Multihash.fromTypeAndDigest(Multicodec.IDENTITY, byteArrayOf(0))
@@ -114,7 +114,7 @@ class PeerId private constructor(val multihash: Multihash) {
         fun fromPublicKey(publicKey: PublicKey): Result<PeerId> {
             val bytes = CryptoUtil.marshalPublicKey(publicKey)
                 .getOrElse { return Err(it) }
-            val algorithm = if (AdvancedEnableInlining && bytes.size <= maxInlineKeyLength) {
+            val algorithm = if (advancedEnableInlining && bytes.size <= maxInlineKeyLength) {
                 Multicodec.IDENTITY
             } else {
                 Multicodec.SHA2_256

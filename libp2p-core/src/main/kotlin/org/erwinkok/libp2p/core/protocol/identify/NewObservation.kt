@@ -6,5 +6,5 @@ import org.erwinkok.libp2p.core.network.NetworkConnection
 
 data class NewObservation(
     val connection: NetworkConnection,
-    val observed: InetMultiaddress
+    val observed: InetMultiaddress,
 )

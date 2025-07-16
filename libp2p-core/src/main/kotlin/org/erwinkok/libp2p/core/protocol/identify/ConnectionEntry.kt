@@ -12,5 +12,5 @@ enum class PushSupport {
 class ConnectionEntry(
     val job: Job? = null,
     var pushSupport: PushSupport = PushSupport.IdentifyPushSupportUnknown,
-    var sequence: Long = 0L
+    var sequence: Long = 0L,
 )

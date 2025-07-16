@@ -3,9 +3,9 @@ package org.erwinkok.libp2p.core.peerstore.addressbook
 
 import com.google.protobuf.ByteString
 import com.google.protobuf.InvalidProtocolBufferException
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.datastore.Datastore
 import org.erwinkok.libp2p.core.datastore.Write
 import org.erwinkok.libp2p.core.host.PeerId

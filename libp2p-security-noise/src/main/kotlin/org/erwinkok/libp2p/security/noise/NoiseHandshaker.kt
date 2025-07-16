@@ -6,7 +6,7 @@ import com.google.protobuf.InvalidProtocolBufferException
 import com.southernstorm.noise.protocol.DHState
 import com.southernstorm.noise.protocol.HandshakeState
 import com.southernstorm.noise.protocol.Noise
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.PeerId.Companion.fromPublicKey

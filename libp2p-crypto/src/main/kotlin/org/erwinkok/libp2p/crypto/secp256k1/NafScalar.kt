@@ -32,5 +32,5 @@ data class NafScalar(
     // NOTE: The fields are defined in the order that they are to minimize the
     // padding on 32-bit and 64-bit platforms.
     val pos: ByteArray,
-    val neg: ByteArray
+    val neg: ByteArray,
 )

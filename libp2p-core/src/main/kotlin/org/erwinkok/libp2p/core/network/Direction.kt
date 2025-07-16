@@ -5,5 +5,5 @@ package org.erwinkok.libp2p.core.network
 enum class Direction {
     DirUnknown,
     DirInbound,
-    DirOutbound
+    DirOutbound,
 }

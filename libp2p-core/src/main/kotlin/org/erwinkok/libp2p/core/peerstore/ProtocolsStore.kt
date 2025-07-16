@@ -3,12 +3,12 @@
 
 package org.erwinkok.libp2p.core.peerstore
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.serializer
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.datastore.BatchingDatastore
 import org.erwinkok.libp2p.core.datastore.Datastore
 import org.erwinkok.libp2p.core.datastore.Key

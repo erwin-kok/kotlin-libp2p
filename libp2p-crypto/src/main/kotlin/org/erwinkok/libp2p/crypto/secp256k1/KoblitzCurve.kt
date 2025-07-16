@@ -29,7 +29,7 @@ class KoblitzCurve(
     b: BigInteger,
     g: CurvePoint,
     bitSize: Int,
-    name: String
+    name: String,
 ) : Curve(p, n, b, g, bitSize, name) {
     // bigAffineToJacobian takes an affine point (x, y) as big integers and converts
     // it to Jacobian point with Z=1.
@@ -37,7 +37,7 @@ class KoblitzCurve(
         return JacobianPoint(
             FieldVal.setByteSlice(BigInt.toBytes(curvePoint.x)),
             FieldVal.setByteSlice(BigInt.toBytes(curvePoint.y)),
-            FieldVal.One
+            FieldVal.One,
         )
     }
 
@@ -49,7 +49,7 @@ class KoblitzCurve(
         // Convert the field values for the now affine point to big.Ints.
         return CurvePoint(
             BigInt.fromBytes(p.x.bytes()),
-            BigInt.fromBytes(p.y.bytes())
+            BigInt.fromBytes(p.y.bytes()),
         )
     }
 
@@ -143,7 +143,7 @@ class KoblitzCurve(
                 n = Secp256k1Curve.n,
                 b = BigInt.fromHex("0000000000000000000000000000000000000000000000000000000000000007"),
                 g = Secp256k1Curve.g,
-                bitSize = Secp256k1Curve.bitSize
+                bitSize = Secp256k1Curve.bitSize,
             )
         }
     }

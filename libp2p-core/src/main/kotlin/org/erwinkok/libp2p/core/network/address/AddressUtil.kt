@@ -2,7 +2,7 @@
 package org.erwinkok.libp2p.core.network.address
 
 import inet.ipaddr.HostName
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.result.Err
 import org.erwinkok.result.Ok

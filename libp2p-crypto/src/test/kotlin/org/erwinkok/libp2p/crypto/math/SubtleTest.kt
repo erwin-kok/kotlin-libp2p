@@ -17,7 +17,7 @@ internal class SubtleTest {
             Tuple3(byteArrayOf(0x11), byteArrayOf(0x11), true),
             Tuple3(byteArrayOf(0x12), byteArrayOf(0x11), false),
             Tuple3(byteArrayOf(0x11), byteArrayOf(0x11, 0x12), false),
-            Tuple3(byteArrayOf(0x11, 0x12), byteArrayOf(0x11), false)
+            Tuple3(byteArrayOf(0x11, 0x12), byteArrayOf(0x11), false),
         ).map { (a, b, out) ->
             DynamicTest.dynamicTest("Test: $a, $b -> $out") {
                 assertEquals(out, Subtle.constantTimeCompare(a, b))
@@ -32,7 +32,7 @@ internal class SubtleTest {
             Tuple3(0, 1, false),
             Tuple3(1, 0, false),
             Tuple3(0xff, 0xff, true),
-            Tuple3(0xff, 0xfe, false)
+            Tuple3(0xff, 0xfe, false),
         ).map { (a, b, out) ->
             DynamicTest.dynamicTest("Test: $a, $b -> $out") {
                 assertEquals(out, Subtle.constantTimeByteEq(a, b))

@@ -40,4 +40,7 @@ dependencies {
     implementation(libs.slf4j.api)
 
     runtimeOnly(libs.logback.classic)
+
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

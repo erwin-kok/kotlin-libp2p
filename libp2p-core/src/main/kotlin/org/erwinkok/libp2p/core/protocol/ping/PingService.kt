@@ -3,6 +3,7 @@
 
 package org.erwinkok.libp2p.core.protocol.ping
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CancellationException
@@ -18,12 +19,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.host.Host
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Stream
-import org.erwinkok.libp2p.core.resourcemanager.ResourceScope.Companion.ReservationPriorityAlways
+import org.erwinkok.libp2p.core.resourcemanager.ResourceScope.Companion.reservationPriorityAlways
 import org.erwinkok.multiformat.multistream.ProtocolId
 import org.erwinkok.result.Err
 import org.erwinkok.result.Error
@@ -63,7 +63,7 @@ class PingService(
                 stream.reset()
                 return@withContext
             }
-        stream.streamScope.reserveMemory(PingSize, ReservationPriorityAlways)
+        stream.streamScope.reserveMemory(PingSize, reservationPriorityAlways)
             .onFailure {
                 logger.debug { "error reserving memory for ping stream: ${errorMessage(it)}" }
                 stream.reset()
@@ -142,7 +142,7 @@ class PingService(
     }
 
     private suspend fun ping(stream: Stream): Result<Long> {
-        stream.streamScope.reserveMemory(2 * PingSize, ReservationPriorityAlways)
+        stream.streamScope.reserveMemory(2 * PingSize, reservationPriorityAlways)
             .getOrElse {
                 return Err("error reserving memory for ping stream: ${errorMessage(it)}")
             }

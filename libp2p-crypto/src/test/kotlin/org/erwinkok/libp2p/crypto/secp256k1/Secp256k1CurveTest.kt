@@ -209,11 +209,12 @@ internal class Secp256k1CurveTest {
                 "6e3d537ae61fb1247eda4b4f523cfbaee5152c0d0d96b520376833c2e5944a11",
             ),
         ).map {
-            (
-                test_x1: String, test_y1: String, test_z1: String, // Coordinates (in hex) of first point to add
-                test_x2: String, test_y2: String, test_z2: String, // Coordinates (in hex) of second point to add
-                test_x3: String, test_y3: String, test_z3: String,
-            ) ->
+                (
+                    test_x1: String, test_y1: String, test_z1: String, // Coordinates (in hex) of first point to add
+                    test_x2: String, test_y2: String, test_z2: String, // Coordinates (in hex) of second point to add
+                    test_x3: String, test_y3: String, test_z3: String,
+                ),
+            ->
             DynamicTest.dynamicTest("Test: $test_x1, $test_x2, $test_x3") {
                 // Convert hex to field values.
                 val p1 = JacobianPoint.fromHex(test_x1, test_y1, test_z1)
@@ -272,10 +273,11 @@ internal class Secp256k1CurveTest {
                 "7be30acc88bceac58d5b4d15de05a931ae602a07bcb6318d5dedc563e4482993",
             ),
         ).map {
-            (
-                test_x1: String, test_y1: String, test_z1: String, // Coordinates (in hex) of point to double
-                test_x3: String, test_y3: String, test_z3: String,
-            ) -> // Coordinates (in hex) of expected point
+                (
+                    test_x1: String, test_y1: String, test_z1: String, // Coordinates (in hex) of point to double
+                    test_x3: String, test_y3: String, test_z3: String,
+                ),
+            -> // Coordinates (in hex) of expected point
             DynamicTest.dynamicTest("Test: $test_x1, $test_y1, $test_z1") {
                 // Convert hex to field values.
                 val p1 = JacobianPoint.fromHex(test_x1, test_y1, test_z1)

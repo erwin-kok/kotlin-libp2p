@@ -5,9 +5,9 @@ package org.erwinkok.libp2p.core.network
 import inet.ipaddr.HostName
 import inet.ipaddr.IPAddressString
 import inet.ipaddr.ipv6.IPv6Address
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.SocketAddress
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.multiformat.multiaddress.Multiaddress
 import org.erwinkok.multiformat.multiaddress.Protocol

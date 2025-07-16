@@ -17,7 +17,7 @@ internal class Accumulator96Test {
             Tuple4("overflow in words one and two", Accumulator96(0xffffffffu, 0xffffffffu, 0u), 1uL, Accumulator96(0u, 0u, 1u)),
             // Start accumulator at 129127208455837319175 which is the result of
             // 4294967295 * 4294967295 accumulated seven times.
-            Tuple4("max result from eight adds of max uint32 multiplications", Accumulator96(7u, 4294967282u, 6u), 18446744065119617025uL, Accumulator96(8u, 4294967280u, 7u))
+            Tuple4("max result from eight adds of max uint32 multiplications", Accumulator96(7u, 4294967282u, 6u), 18446744065119617025uL, Accumulator96(8u, 4294967280u, 7u)),
         ).map { (name: String, start: Accumulator96, input: ULong, expected: Accumulator96) ->
             DynamicTest.dynamicTest("Test: $name") {
                 start.add(input)

@@ -10,7 +10,7 @@ class IdentifySnapshot(
     val sequence: Long = 0L,
     val protocols: Set<ProtocolId> = setOf(),
     val addresses: List<InetMultiaddress> = listOf(),
-    val record: Envelope? = null
+    val record: Envelope? = null,
 ) {
     override fun toString(): String {
         return "snapshot: $sequence (protos: ${protocols.joinToString()}) (addrs: ${addresses.joinToString()}))"

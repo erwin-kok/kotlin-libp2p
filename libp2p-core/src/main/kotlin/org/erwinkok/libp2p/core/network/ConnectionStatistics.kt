@@ -9,5 +9,5 @@ class ConnectionStatistics(
     var direction: Direction? = null,
     var opened: Instant? = null,
     var transient: Boolean = false,
-    var extra: Map<Any, Any>? = null
+    var extra: Map<Any, Any>? = null,
 )

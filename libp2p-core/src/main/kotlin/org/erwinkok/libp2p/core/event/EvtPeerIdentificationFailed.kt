@@ -7,5 +7,5 @@ import org.erwinkok.result.Error
 
 data class EvtPeerIdentificationFailed(
     val peerId: PeerId,
-    val reason: Error
+    val reason: Error,
 ) : EventType()

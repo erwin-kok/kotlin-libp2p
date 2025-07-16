@@ -1,10 +1,10 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.host.builder
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.datastore.BatchingDatastore
 import org.erwinkok.libp2p.core.datastore.MapDatastore
 import org.erwinkok.libp2p.core.event.EventBus

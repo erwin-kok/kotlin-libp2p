@@ -5,5 +5,5 @@ package org.erwinkok.libp2p.core.event
 import org.erwinkok.libp2p.core.network.Reachability
 
 data class EvtLocalReachabilityChanged(
-    val reachability: Reachability
+    val reachability: Reachability,
 ) : EventType()

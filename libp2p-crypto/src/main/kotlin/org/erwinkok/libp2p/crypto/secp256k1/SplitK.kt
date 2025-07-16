@@ -5,5 +5,5 @@ data class SplitK(
     val k1Bytes: ByteArray,
     val k2Bytes: ByteArray,
     val k1Sign: Int,
-    val k2Sign: Int
+    val k2Sign: Int,
 )

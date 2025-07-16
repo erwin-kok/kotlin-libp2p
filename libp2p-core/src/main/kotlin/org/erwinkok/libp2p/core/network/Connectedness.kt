@@ -6,5 +6,5 @@ enum class Connectedness {
     NotConnected,
     Connected,
     CanConnect,
-    CannotConnect
+    CannotConnect,
 }

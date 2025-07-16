@@ -1,13 +1,13 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.transport.tcp
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.network.selector.ActorSelectorManager
 import io.ktor.network.sockets.SocketOptions
 import io.ktor.network.sockets.aSocket
 import io.ktor.utils.io.core.internal.ChunkBuffer
 import io.ktor.utils.io.pool.ObjectPool
 import kotlinx.coroutines.CoroutineDispatcher
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress

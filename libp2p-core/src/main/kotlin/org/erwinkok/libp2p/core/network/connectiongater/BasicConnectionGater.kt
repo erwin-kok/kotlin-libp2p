@@ -3,12 +3,12 @@ package org.erwinkok.libp2p.core.network.connectiongater
 
 import inet.ipaddr.IPAddress
 import inet.ipaddr.IPAddressString
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.core.Closeable
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.mapNotNull
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.datastore.Datastore
 import org.erwinkok.libp2p.core.datastore.Key.Companion.key
 import org.erwinkok.libp2p.core.datastore.namespace.Namespace

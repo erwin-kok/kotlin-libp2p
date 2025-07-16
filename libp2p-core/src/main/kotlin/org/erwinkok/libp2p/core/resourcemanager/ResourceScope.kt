@@ -11,9 +11,9 @@ interface ResourceScope {
     fun beginSpan(): Result<ResourceScopeSpan>
 
     companion object {
-        const val ReservationPriorityLow: UByte = 101u
-        const val ReservationPriorityMedium: UByte = 152u
-        const val ReservationPriorityHigh: UByte = 203u
-        const val ReservationPriorityAlways: UByte = 255u
+        const val reservationPriorityLow: UByte = 101u
+        const val reservationPriorityMedium: UByte = 152u
+        const val reservationPriorityHigh: UByte = 203u
+        const val reservationPriorityAlways: UByte = 255u
     }
 }

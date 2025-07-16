@@ -4,14 +4,10 @@ package org.erwinkok.libp2p.core.peerstore.cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Cache as CaffeineCache
 
-class CaffeineCache<K, V>(cacheSize: Long) : Cache<K, V> {
-    private val cache: CaffeineCache<K, V>
-
-    init {
-        cache = Caffeine.newBuilder()
-            .maximumSize(cacheSize)
-            .build()
-    }
+class CaffeineCache<K : Any, V : Any>(cacheSize: Long) : Cache<K, V> {
+    private val cache: CaffeineCache<K, V> = Caffeine.newBuilder()
+        .maximumSize(cacheSize)
+        .build()
 
     override fun get(key: K): V? {
         return cache.getIfPresent(key)

@@ -2,6 +2,7 @@
 package org.erwinkok.libp2p.security.noise
 
 import com.southernstorm.noise.protocol.CipherState
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.network.util.DefaultByteBufferPool
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
@@ -21,7 +22,6 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.RemoteIdentity

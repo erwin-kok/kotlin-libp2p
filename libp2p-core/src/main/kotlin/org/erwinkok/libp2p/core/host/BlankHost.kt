@@ -1,13 +1,13 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.host
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
 import org.erwinkok.libp2p.core.event.EvtLocalProtocolsUpdated
@@ -43,10 +43,10 @@ class BlankHost private constructor(
     override val network: Network,
     override val eventBus: EventBus,
 ) : AwaitableClosable, Host {
-    private val _context = SupervisorJob(scope.coroutineContext[Job])
+    private val context = SupervisorJob(scope.coroutineContext[Job])
 
     override val jobContext: Job
-        get() = _context
+        get() = context
 
     override val id: PeerId
         get() = network.localPeerId
@@ -120,7 +120,7 @@ class BlankHost private constructor(
     override fun close() {
         eventBus.close()
         network.close()
-        _context.complete()
+        context.complete()
     }
 
     private suspend fun handleStream(stream: Stream) {
@@ -135,7 +135,7 @@ class BlankHost private constructor(
                 .onSuccess { (_, protocol, handler): ProtocolHandlerInfo<Stream> ->
                     stream.setProtocol(protocol)
                     if (handler != null) {
-                        scope.launch(_context + CoroutineName("swarm-stream-${stream.id} ($protocol)")) {
+                        scope.launch(context + CoroutineName("swarm-stream-${stream.id} ($protocol)")) {
                             handler(protocol, stream)
                         }
                     } else {
@@ -154,7 +154,7 @@ class BlankHost private constructor(
         suspend fun create(
             scope: CoroutineScope,
             network: Network,
-            eventBus: EventBus = EventBus()
+            eventBus: EventBus = EventBus(),
         ): Result<Host> {
             val host = BlankHost(scope, network, eventBus)
             val localIdentity = host.peerstore.localIdentity(host.id) ?: return Err("LocalIdentity not stored in peerstore")

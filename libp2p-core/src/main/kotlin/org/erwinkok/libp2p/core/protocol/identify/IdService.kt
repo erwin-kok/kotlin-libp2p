@@ -5,6 +5,7 @@
 package org.erwinkok.libp2p.core.protocol.identify
 
 import com.google.protobuf.ByteString
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.writeFully
 import kotlinx.atomicfu.locks.ReentrantLock
@@ -24,7 +25,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EvtLocalAddressesUpdated
 import org.erwinkok.libp2p.core.event.EvtLocalProtocolsUpdated
@@ -50,7 +50,7 @@ import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.RecentlyConnectedA
 import org.erwinkok.libp2p.core.peerstore.Peerstore.Companion.TempAddrTTL
 import org.erwinkok.libp2p.core.record.Envelope
 import org.erwinkok.libp2p.core.record.PeerRecord
-import org.erwinkok.libp2p.core.resourcemanager.ResourceScope.Companion.ReservationPriorityAlways
+import org.erwinkok.libp2p.core.resourcemanager.ResourceScope.Companion.reservationPriorityAlways
 import org.erwinkok.libp2p.crypto.CryptoUtil
 import org.erwinkok.multiformat.multistream.MultistreamMuxer
 import org.erwinkok.multiformat.multistream.ProtocolId
@@ -76,7 +76,7 @@ private val logger = KotlinLogging.logger {}
 class IdService(
     private val scope: CoroutineScope,
     private val host: Host,
-    private val userAgent: String = DefaultUserAgent,
+    private val userAgent: String = defaultUserAgent,
     private val disableSignedPeerRecord: Boolean = false,
 ) : AwaitableClosable, Subscriber {
     private val _context = Job(scope.coroutineContext[Job])
@@ -269,7 +269,7 @@ class IdService(
     }
 
     private suspend fun sendIdentifyResponse(stream: Stream, isPush: Boolean): Result<Unit> {
-        stream.streamScope.setService(ServiceName)
+        stream.streamScope.setService(serviceName)
             .onFailure {
                 val message = "error attaching stream to identify service: ${errorMessage(it)}"
                 logger.warn { message }
@@ -305,13 +305,13 @@ class IdService(
     }
 
     private suspend fun handleIdentifyResponse(stream: Stream, isPush: Boolean): Result<Unit> {
-        stream.streamScope.setService(ServiceName)
+        stream.streamScope.setService(serviceName)
             .onFailure {
                 logger.warn { "error attaching stream to identify service: ${errorMessage(it)}" }
                 stream.reset()
                 return Err(it)
             }
-        stream.streamScope.reserveMemory(SignedIdSize, ReservationPriorityAlways)
+        stream.streamScope.reserveMemory(SignedIdSize, reservationPriorityAlways)
             .onFailure {
                 logger.warn { "error reserving memory for identify stream: ${errorMessage(it)}" }
                 stream.reset()
@@ -404,7 +404,7 @@ class IdService(
 
     private suspend fun writeChunkedIdentifyMessage(stream: Stream, identify: DbIdentify.Identify) {
         val bytes = identify.toByteArray()
-        if (!identify.hasSignedPeerRecord() && bytes.size <= LegacyIdSize) {
+        if (!identify.hasSignedPeerRecord() && bytes.size <= legacyIdSize) {
             stream.output.writeUnsignedVarInt(bytes.size)
             stream.output.writeFully(bytes)
             stream.output.flush()
@@ -474,7 +474,7 @@ class IdService(
         }
 
         // set protocol versions
-        identifyBuilder.protocolVersion = LibP2PVersion
+        identifyBuilder.protocolVersion = libP2PVersion
         identifyBuilder.agentVersion = userAgent
         return identifyBuilder
     }
@@ -697,10 +697,10 @@ class IdService(
     companion object {
         private val Id = ProtocolId.of("/ipfs/id/1.0.0")
         private val IdPush = ProtocolId.of("/ipfs/id/push/1.0.0")
-        private const val LibP2PVersion = "ipfs/0.1.0"
-        private const val ServiceName = "libp2p.identify"
-        private const val DefaultUserAgent = "erwinkok.org/libp2p"
-        private const val LegacyIdSize = 2 * 1024
+        private const val libP2PVersion = "ipfs/0.1.0"
+        private const val serviceName = "libp2p.identify"
+        private const val defaultUserAgent = "erwinkok.org/libp2p"
+        private const val legacyIdSize = 2 * 1024
         private const val SignedIdSize = 8 * 1024
         private const val MaxMessages = 10
         private const val maxPushConcurrency = 32

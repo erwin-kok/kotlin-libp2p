@@ -1,35 +1,18 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 import com.adarshr.gradle.testlogger.theme.ThemeType
-import kotlinx.kover.gradle.plugin.dsl.AggregationType
-import kotlinx.kover.gradle.plugin.dsl.GroupingEntityType
-import kotlinx.kover.gradle.plugin.dsl.MetricType
 
-@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     idea
     kotlin("jvm")
     kotlin("plugin.serialization")
 
-    org.jetbrains.kotlinx.kover
-//    org.jlleitschuh.gradle.ktlint
-    com.adarshr.`test-logger`
+    id("org.jetbrains.kotlinx.kover")
+    id("org.jlleitschuh.gradle.ktlint")
+    id("com.adarshr.test-logger")
 }
 
 group = "org.erwinkok.libp2p"
 version = "0.2.0"
-
-//ktlint {
-//    verbose.set(true)
-//    outputToConsole.set(true)
-//    coloredOutput.set(true)
-//    reporters {
-//        reporter(ReporterType.CHECKSTYLE)
-//        reporter(ReporterType.HTML)
-//    }
-//    filter {
-//        exclude("**/build/**")
-//    }
-//}
 
 tasks.test {
     useJUnitPlatform()
@@ -40,36 +23,18 @@ testlogger {
 }
 
 kover {
-    excludeInstrumentation {
-        classes("org.erwinkok.libp2p.*.pb.*")
-    }
-}
-
-koverReport {
-    filters {
-        excludes {
-            classes("org.erwinkok.libp2p.*.pb.*")
+    reports {
+        filters {
+            excludes {
+                classes("org.erwinkok.libp2p.*.pb.*")
+            }
         }
-        includes {
-            classes("org.erwinkok.libp2p.*")
-        }
-    }
 
-    defaults {
-        html {
-            onCheck = true
-        }
-    }
-
-    verify {
-        rule {
-            isEnabled = true
-            entity = GroupingEntityType.APPLICATION
-            bound {
-                minValue = 0
-                maxValue = 99
-                metric = MetricType.LINE
-                aggregation = AggregationType.COVERED_PERCENTAGE
+        verify {
+            rule {
+                bound {
+                    minValue.set(0)
+                }
             }
         }
     }

@@ -3,6 +3,7 @@
 
 package org.erwinkok.libp2p.muxer.mplex
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.core.BytePacketBuilder
@@ -19,7 +20,6 @@ import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
@@ -85,7 +85,7 @@ class MplexStreamMuxerConnection internal constructor(
                     Err(closeCause ?: ErrShutdown)
                 }
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Err(ErrShutdown)
         }
     }
@@ -119,7 +119,7 @@ class MplexStreamMuxerConnection internal constructor(
                         closeCause = it
                         return@launch
                     }
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 break
             } catch (e: Exception) {
                 logger.warn { "Unexpected error occurred in mplex multiplexer input loop: ${errorMessage(e)}" }
@@ -142,9 +142,9 @@ class MplexStreamMuxerConnection internal constructor(
                 val frame = outputChannel.receive()
                 connection.output.writeMplexFrame(frame)
                 connection.output.flush()
-            } catch (e: ClosedReceiveChannelException) {
+            } catch (_: ClosedReceiveChannelException) {
                 break
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 break
             } catch (e: Exception) {
                 logger.warn { "Unexpected error occurred in mplex mux input loop: ${errorMessage(e)}" }
@@ -182,11 +182,11 @@ class MplexStreamMuxerConnection internal constructor(
             }
 
             is MessageFrame -> {
-                if (logger.isDebugEnabled) {
+                if (logger.isDebugEnabled()) {
                     if (initiator) {
-                        logger.debug("$this: Remote sends message on his stream: $id")
+                        logger.debug { "$this: Remote sends message on his stream: $id" }
                     } else {
-                        logger.debug("$this: Remote sends message on our stream: $id")
+                        logger.debug { "$this: Remote sends message on our stream: $id" }
                     }
                 }
                 if (stream != null) {
@@ -210,11 +210,11 @@ class MplexStreamMuxerConnection internal constructor(
             }
 
             is CloseFrame -> {
-                if (logger.isDebugEnabled) {
+                if (logger.isDebugEnabled()) {
                     if (initiator) {
-                        logger.debug("$this: Remote closes his stream: $mplexStreamId")
+                        logger.debug { "$this: Remote closes his stream: $mplexStreamId" }
                     } else {
-                        logger.debug("$this: Remote closes our stream: $mplexStreamId")
+                        logger.debug { "$this: Remote closes our stream: $mplexStreamId" }
                     }
                 }
                 if (stream != null) {
@@ -227,11 +227,11 @@ class MplexStreamMuxerConnection internal constructor(
             }
 
             is ResetFrame -> {
-                if (logger.isDebugEnabled) {
+                if (logger.isDebugEnabled()) {
                     if (initiator) {
-                        logger.debug("$this: Remote resets his stream: $id")
+                        logger.debug { "$this: Remote resets his stream: $id" }
                     } else {
-                        logger.debug("$this: Remote resets our stream: $id")
+                        logger.debug { "$this: Remote resets our stream: $id" }
                     }
                 }
                 if (stream != null) {

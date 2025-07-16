@@ -1,11 +1,11 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.network.swarm
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.base.closableLockedList
 import org.erwinkok.libp2p.core.base.withLock
@@ -149,9 +149,16 @@ class SwarmConnection(
             val statistics = ConnectionStatistics()
             statistics.direction = direction
             statistics.opened = Instant.now()
-            val stream = SwarmStream(muxedStream, this, nextStreamId(), streamScope, statistics, {
-                removeStream(it)
-            })
+            val stream = SwarmStream(
+                muxedStream,
+                this,
+                nextStreamId(),
+                streamScope,
+                statistics,
+                {
+                    removeStream(it)
+                },
+            )
             statistics.numberOfStreams++
             _streams.add(stream)
             return Ok(stream)

@@ -1,10 +1,10 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.datastore
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.datastore.Datastore.Companion.ErrBatchUnsupported
 import org.erwinkok.libp2p.core.datastore.query.Query
 import org.erwinkok.libp2p.core.datastore.query.QueryResult

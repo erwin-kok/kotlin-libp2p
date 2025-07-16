@@ -1,6 +1,7 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.examples.chat
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -8,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.host.BasicHost
 import org.erwinkok.libp2p.core.host.Host
 import org.erwinkok.libp2p.core.host.LocalIdentity

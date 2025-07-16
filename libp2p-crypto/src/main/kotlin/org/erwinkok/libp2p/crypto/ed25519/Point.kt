@@ -203,8 +203,8 @@ class Point {
         val IdentityPoint = Point(
             byteArrayOf(
                 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-            )
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ),
         )
 
         // generator is the canonical curve basepoint. See TestGenerator for the
@@ -214,8 +214,8 @@ class Point {
                 0x58, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
                 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
                 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
-                0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66
-            )
+                0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
+            ),
         )
 
         val affineLookupTable: Array<AffineLookupTable> by lazy { basepointTable() }

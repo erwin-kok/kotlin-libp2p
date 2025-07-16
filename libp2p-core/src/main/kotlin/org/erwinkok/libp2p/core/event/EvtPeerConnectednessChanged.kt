@@ -7,5 +7,5 @@ import org.erwinkok.libp2p.core.network.Connectedness
 
 data class EvtPeerConnectednessChanged(
     val peerId: PeerId,
-    val connectedness: Connectedness
+    val connectedness: Connectedness,
 ) : EventType()

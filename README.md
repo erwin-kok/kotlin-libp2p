@@ -6,18 +6,12 @@
 
 [![ci](https://github.com/erwin-kok/kotlin-libp2p/actions/workflows/ci.yaml/badge.svg)](https://github.com/erwin-kok/kotlin-libp2p/actions/workflows/ci.yaml)
 [![Maven Central](https://img.shields.io/maven-central/v/org.erwinkok.libp2p/libp2p-core)](https://central.sonatype.com/artifact/org.erwinkok.libp2p/libp2p-core)
-[![Kotlin](https://img.shields.io/badge/kotlin-1.9.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.2.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![License](https://img.shields.io/github/license/erwin-kok/kotlin-libp2p.svg)](https://github.com/erwin-kok/kotlin-libp2p/blob/master/LICENSE)
-
-## Disclaimer
-
-Welcome to my personal pet project! This project is currently under heavy development (WIP), and as such I do not
-guarantee functionality, stable interfaces and/or operation without any bugs/issues (See also [`LICENSE`](LICENSE) for
-more details). The current main goal of this project is educational, and to research new technologies.
 
 ## libp2p overview
 
-Traditional communication is client-server based. The client initiates a connection to the server, and communicates with
+Traditional communication is client-server-based. The client initiates a connection to the server, and communicates with
 the server using a protocol suited for that server. As an example: suppose we have two WhatsApp clients lets say `A`
 and `B`. And `A` wants to send a message to `B`. Typically, they both initiate a connection to the server. `A` sends a
 message to the server and tells the server to relay this message to `B`. The server knows both clients so this

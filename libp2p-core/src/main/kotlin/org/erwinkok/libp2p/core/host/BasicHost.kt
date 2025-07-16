@@ -1,6 +1,7 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.core.host
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -8,7 +9,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.event.EventBus
 import org.erwinkok.libp2p.core.event.EvtLocalProtocolsUpdated
@@ -53,7 +53,7 @@ class BasicHost(
     override val eventBus: EventBus = EventBus(),
     hostConfig: HostConfig = HostConfig(),
 ) : AwaitableClosable, Host {
-    private val _context = SupervisorJob(scope.coroutineContext[Job])
+    private val context = SupervisorJob(scope.coroutineContext[Job])
     private val addressMutex = ReentrantLock()
     private val filteredInterfaceAddresses = mutableListOf<InetMultiaddress>()
     private val allInterfaceAddresses = mutableListOf<InetMultiaddress>()
@@ -62,7 +62,7 @@ class BasicHost(
     val idService: IdService
 
     override val jobContext: Job
-        get() = _context
+        get() = context
 
     override val id: PeerId
         get() = network.localPeerId
@@ -162,7 +162,7 @@ class BasicHost(
                 logger.info { "Peer $peerId does not support any of the requested protocols ${protocols.joinToString()}" }
                 stream.reset()
                 return Err(it)
-            }
+            },
         )
         return Ok(stream)
     }
@@ -213,7 +213,7 @@ class BasicHost(
                 },
                 {
                     logger.debug { "failed to resolve listen addresses" }
-                }
+                },
             )
         val observedAddresses = idService.ownObservedAddresses()
         finalAddresses.addAll(observedAddresses)
@@ -225,7 +225,7 @@ class BasicHost(
         idService.close()
         eventBus.close()
         network.close()
-        _context.complete()
+        context.complete()
     }
 
     private suspend fun handleStream(stream: Stream) {
@@ -240,7 +240,7 @@ class BasicHost(
                 .onSuccess { (_, protocol, handler): ProtocolHandlerInfo<Stream> ->
                     stream.setProtocol(protocol)
                     if (handler != null) {
-                        scope.launch(_context + CoroutineName("swarm-stream-${stream.id} ($protocol)")) {
+                        scope.launch(context + CoroutineName("swarm-stream-${stream.id} ($protocol)")) {
                             handler(protocol, stream)
                         }
                     } else {
@@ -260,7 +260,7 @@ class BasicHost(
             scope: CoroutineScope,
             network: Network,
             eventBus: EventBus = EventBus(),
-            hostConfig: HostConfig = HostConfig()
+            hostConfig: HostConfig = HostConfig(),
         ): Result<Host> {
             val host = BasicHost(scope, network, eventBus, hostConfig)
             val localIdentity = host.peerstore.localIdentity(host.id) ?: return Err("LocalIdentity not stored in peerstore")

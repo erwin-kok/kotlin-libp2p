@@ -2,6 +2,7 @@
 package org.erwinkok.libp2p.testplans.ping
 
 import com.beust.klaxon.JsonObject
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -10,7 +11,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.datastore.MapDatastore
 import org.erwinkok.libp2p.core.host.Host
 import org.erwinkok.libp2p.core.host.LocalIdentity
@@ -193,18 +193,19 @@ private suspend fun dialer(scope: CoroutineScope, host: Host, redisClient: Jedis
         pingService.close()
     }
 
-    if (pingResult == null) {
+    val result = pingResult
+    if (result == null) {
         logger.error { "Error occurred while receiving from peer" }
         return true
     }
 
-    val error = pingResult?.error
+    val error = result.error
     if (error != null) {
         logger.error { "Error occurred while receiving from peer: ${errorMessage(error)}" }
         return true
     }
 
-    val pingRTTMilllis = pingResult?.rtt ?: 0L
+    val pingRTTMilllis = result.rtt ?: 0L
 
     val testResult = JsonObject()
     testResult["handshakePlusOneRTTMillis"] = handshakePlusOneRTT / 1000000.0

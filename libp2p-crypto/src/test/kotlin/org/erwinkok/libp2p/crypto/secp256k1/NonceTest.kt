@@ -21,7 +21,7 @@ internal class NonceTest {
                 "",
                 "",
                 0,
-                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3"
+                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3",
             ),
             Tuple7(
                 // Should be same as key with 32 bytes due to zero padding.
@@ -31,7 +31,7 @@ internal class NonceTest {
                 "",
                 "",
                 0,
-                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3"
+                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3",
             ),
             Tuple7(
                 // Should be same as key with 32 bytes due to truncation.
@@ -41,7 +41,7 @@ internal class NonceTest {
                 "",
                 "",
                 0,
-                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3"
+                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3",
             ),
             Tuple7(
                 "hash <32 bytes (padded), no extra data, no version",
@@ -50,7 +50,7 @@ internal class NonceTest {
                 "",
                 "",
                 0,
-                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3"
+                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3",
             ),
             Tuple7(
                 "hash >32 bytes (truncated), no extra data, no version",
@@ -59,7 +59,7 @@ internal class NonceTest {
                 "",
                 "",
                 0,
-                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3"
+                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3",
             ),
             Tuple7(
                 "hash 32 bytes, extra data <32 bytes (ignored), no version",
@@ -68,7 +68,7 @@ internal class NonceTest {
                 "00000000000000000000000000000000000000000000000000000000000002",
                 "",
                 0,
-                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3"
+                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3",
             ),
             Tuple7(
                 "hash 32 bytes, extra data >32 bytes (ignored), no version",
@@ -77,7 +77,7 @@ internal class NonceTest {
                 "000000000000000000000000000000000000000000000000000000000000000002",
                 "",
                 0,
-                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3"
+                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3",
             ),
             Tuple7(
                 "hash 32 bytes, no extra data, version <16 bytes (ignored)",
@@ -86,7 +86,7 @@ internal class NonceTest {
                 "",
                 "000000000000000000000000000003",
                 0,
-                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3"
+                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3",
             ),
             Tuple7(
                 "hash 32 bytes, no extra data, version >16 bytes (ignored)",
@@ -95,7 +95,7 @@ internal class NonceTest {
                 "",
                 "0000000000000000000000000000000003",
                 0,
-                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3"
+                "154e92760f77ad9af6b547edd6f14ad0fae023eb2221bc8be2911675d8a686a3",
             ),
             Tuple7(
                 "hash 32 bytes, extra data 32 bytes, no version",
@@ -104,7 +104,7 @@ internal class NonceTest {
                 "0000000000000000000000000000000000000000000000000000000000000002",
                 "",
                 0,
-                "67893461ade51cde61824b20bc293b585d058e6b9f40fb68453d5143f15116ae"
+                "67893461ade51cde61824b20bc293b585d058e6b9f40fb68453d5143f15116ae",
             ),
             Tuple7(
                 "hash 32 bytes, no extra data, version 16 bytes",
@@ -113,7 +113,7 @@ internal class NonceTest {
                 "",
                 "00000000000000000000000000000003",
                 0,
-                "7b27d6ceff87e1ded1860ca4e271a530e48514b9d3996db0af2bb8bda189007d"
+                "7b27d6ceff87e1ded1860ca4e271a530e48514b9d3996db0af2bb8bda189007d",
             ),
             Tuple7(
                 // Should be same as no extra data + version specified due to padding.
@@ -123,7 +123,7 @@ internal class NonceTest {
                 "0000000000000000000000000000000000000000000000000000000000000000",
                 "00000000000000000000000000000003",
                 0,
-                "7b27d6ceff87e1ded1860ca4e271a530e48514b9d3996db0af2bb8bda189007d"
+                "7b27d6ceff87e1ded1860ca4e271a530e48514b9d3996db0af2bb8bda189007d",
             ),
             Tuple7(
                 "hash 32 bytes, extra data 32 bytes, version 16 bytes",
@@ -132,7 +132,7 @@ internal class NonceTest {
                 "0000000000000000000000000000000000000000000000000000000000000002",
                 "00000000000000000000000000000003",
                 0,
-                "9b5657643dfd4b77d99dfa505ed8a17e1b9616354fc890669b4aabece2170686"
+                "9b5657643dfd4b77d99dfa505ed8a17e1b9616354fc890669b4aabece2170686",
             ),
             Tuple7(
                 "hash 32 bytes, no extra data, no version, extra iteration",
@@ -141,7 +141,7 @@ internal class NonceTest {
                 "",
                 "",
                 1,
-                "66fca3fe494a6216e4a3f15cfbc1d969c60d9cdefda1a1c193edabd34aa8cd5e"
+                "66fca3fe494a6216e4a3f15cfbc1d969c60d9cdefda1a1c193edabd34aa8cd5e",
             ),
             Tuple7(
                 "hash 32 bytes, no extra data, no version, 2 extra iterations",
@@ -150,8 +150,8 @@ internal class NonceTest {
                 "",
                 "",
                 2,
-                "70da248c92b5d28a52eafca1848b1a37d4cb36526c02553c9c48bb0b895fc77d"
-            )
+                "70da248c92b5d28a52eafca1848b1a37d4cb36526c02553c9c48bb0b895fc77d",
+            ),
         ).map { (name: String, t_key: String, t_hash: String, t_extraData: String, t_version: String, iterations: Int, t_expected: String) ->
             DynamicTest.dynamicTest("Test: $name") {
                 val privKey = Hex.decodeOrThrow(t_key)
@@ -174,35 +174,35 @@ internal class NonceTest {
             Tuple3(
                 "cca9fbcc1b41e5a95d369eaa6ddcff73b61a4efaa279cfc6567e8daa39cbaf50",
                 "sample",
-                "2df40ca70e639d89528a6b670d9d48d9165fdc0febc0974056bdce192b8e16a3"
+                "2df40ca70e639d89528a6b670d9d48d9165fdc0febc0974056bdce192b8e16a3",
             ),
             Tuple3(
                 // This signature hits the case when S is higher than halforder.
                 // If S is not canonicalized (lowered by halforder), this test will fail.
                 "0000000000000000000000000000000000000000000000000000000000000001",
                 "Satoshi Nakamoto",
-                "8f8a276c19f4149656b280621e358cce24f5f52542772691ee69063b74f15d15"
+                "8f8a276c19f4149656b280621e358cce24f5f52542772691ee69063b74f15d15",
             ),
             Tuple3(
                 "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
                 "Satoshi Nakamoto",
-                "33a19b60e25fb6f4435af53a3d42d493644827367e6453928554f43e49aa6f90"
+                "33a19b60e25fb6f4435af53a3d42d493644827367e6453928554f43e49aa6f90",
             ),
             Tuple3(
                 "f8b8af8ce3c7cca5e300d33939540c10d45ce001b8f252bfbc57ba0342904181",
                 "Alan Turing",
-                "525a82b70e67874398067543fd84c83d30c175fdc45fdeee082fe13b1d7cfdf1"
+                "525a82b70e67874398067543fd84c83d30c175fdc45fdeee082fe13b1d7cfdf1",
             ),
             Tuple3(
                 "0000000000000000000000000000000000000000000000000000000000000001",
                 "All those moments will be lost in time, like tears in rain. Time to die...",
-                "38aa22d72376b4dbc472e06c3ba403ee0a394da63fc58d88686c611aba98d6b3"
+                "38aa22d72376b4dbc472e06c3ba403ee0a394da63fc58d88686c611aba98d6b3",
             ),
             Tuple3(
                 "e91671c46231f833a6406ccbea0e3e392c76c167bac1cb013f6f1013980455c2",
                 "There is a computer disease that anybody who works with computers knows about. It's a very serious disease and it interferes completely with the work. The trouble with computers is that you 'play' with them!",
-                "1f4b84c23a86a221d233f2521be018d9318639d5b8bbd6374a8a59232d16ad3d"
-            )
+                "1f4b84c23a86a221d233f2521be018d9318639d5b8bbd6374a8a59232d16ad3d",
+            ),
         ).map { (key: String, msg: String, nonce: String) ->
             DynamicTest.dynamicTest("Test: $msg") {
                 val privKey = Hex.decodeOrThrow(key)

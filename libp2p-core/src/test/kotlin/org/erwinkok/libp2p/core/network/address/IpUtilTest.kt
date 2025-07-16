@@ -71,7 +71,7 @@ internal class IpUtilTest {
             Tuple2(listOf(tcpAddr), listOf(tcpAddr)),
             Tuple2(listOf(tcpAddr, tcpAddr, tcpAddr), listOf(tcpAddr)),
             Tuple2(listOf(tcpAddr, quicAddr, tcpAddr), listOf(tcpAddr, quicAddr)),
-            Tuple2(listOf(tcpAddr, quicAddr, wsAddr), listOf(tcpAddr, quicAddr, wsAddr))
+            Tuple2(listOf(tcpAddr, quicAddr, wsAddr), listOf(tcpAddr, quicAddr, wsAddr)),
         ).map { (inp, out) ->
             DynamicTest.dynamicTest("Test: $inp") {
                 val dedup = IpUtil.unique(inp)

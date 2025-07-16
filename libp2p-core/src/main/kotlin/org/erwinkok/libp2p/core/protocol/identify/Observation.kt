@@ -5,5 +5,5 @@ import java.time.Instant
 
 data class Observation(
     var seenTime: Instant,
-    var inbound: Boolean
+    var inbound: Boolean,
 )

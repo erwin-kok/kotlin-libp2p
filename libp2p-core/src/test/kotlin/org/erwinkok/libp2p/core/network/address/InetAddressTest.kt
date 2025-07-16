@@ -56,7 +56,7 @@ internal class InetAddressTest {
             Tuple2("/dns4/abc.com/tcp/1234", "Inet: abc.com:1234 (TCP)"), // DNS4:port
             Tuple2("/dns4/abc.com", "Inet: abc.com"), // Just DNS4
             Tuple2("/dns6/abc.com/udp/1234", "Inet: abc.com:1234 (UDP)"), // DNS6:port
-            Tuple2("/dns6/abc.com", "Inet: abc.com") // Just DNS6
+            Tuple2("/dns6/abc.com", "Inet: abc.com"), // Just DNS6
         ).map { (maddress, expectedHost) ->
             DynamicTest.dynamicTest("Test: $maddress") {
                 val multiaddress = InetMultiaddress.fromString(maddress).expectNoErrors()

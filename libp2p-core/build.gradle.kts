@@ -39,6 +39,8 @@ dependencies {
     testImplementation(libs.slf4j.api)
 
     testRuntimeOnly(libs.logback.classic)
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     api(libs.protobuf.java)
 }

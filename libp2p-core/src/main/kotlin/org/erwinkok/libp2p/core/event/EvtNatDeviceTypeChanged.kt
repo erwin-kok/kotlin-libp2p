@@ -6,5 +6,5 @@ import org.erwinkok.libp2p.core.network.NetworkProtocol
 
 data class EvtNatDeviceTypeChanged(
     val transportProtocol: NetworkProtocol,
-    val natDeviceType: NatDeviceType
+    val natDeviceType: NatDeviceType,
 ) : EventType()

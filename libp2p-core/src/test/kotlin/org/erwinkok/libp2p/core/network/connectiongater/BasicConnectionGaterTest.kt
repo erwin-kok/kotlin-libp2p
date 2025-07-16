@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class BasicConnectionGaterTest {
-    private val NullAddress = InetMultiaddress.fromString("").expectNoErrors()
+    private val nullAddress = InetMultiaddress.fromString("").expectNoErrors()
 
     data class MockConnectionMultiaddress(override val localAddress: InetMultiaddress, override val remoteAddress: InetMultiaddress) : ConnectionMultiaddress
 
@@ -34,39 +34,39 @@ class BasicConnectionGaterTest {
         // test peer blocking
         assertTrue(cg.interceptPeerDial(peerA))
         assertTrue(cg.interceptPeerDial(peerB))
-        assertTrue(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(NullAddress, NullAddress)))
-        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(NullAddress, NullAddress)))
+        assertTrue(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(nullAddress, nullAddress)))
+        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(nullAddress, nullAddress)))
 
         cg.blockPeer(peerA)
 
         assertFalse(cg.interceptPeerDial(peerA))
         assertTrue(cg.interceptPeerDial(peerB))
-        assertFalse(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(NullAddress, NullAddress)))
-        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(NullAddress, NullAddress)))
+        assertFalse(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(nullAddress, nullAddress)))
+        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(nullAddress, nullAddress)))
 
         // test addr and subnet blocking
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
 
         cg.blockAddress(ip1)
 
         assertFalse(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors()))
-        assertFalse(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
+        assertFalse(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
 
         cg.blockSubnet(ipNet1)
 
         assertFalse(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors()))
-        assertFalse(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
+        assertFalse(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
 
         // make a new gater reusing the datastore to test persistence
         cg.close()
@@ -79,13 +79,13 @@ class BasicConnectionGaterTest {
 
         assertFalse(cg.interceptPeerDial(peerA))
         assertTrue(cg.interceptPeerDial(peerB))
-        assertFalse(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(NullAddress, NullAddress)))
-        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(NullAddress, NullAddress)))
-        assertFalse(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
+        assertFalse(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(nullAddress, nullAddress)))
+        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(nullAddress, nullAddress)))
+        assertFalse(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
         assertFalse(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors()))
-        assertFalse(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
+        assertFalse(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
 
         // undo the blocks to ensure that we can unblock stuff
         cg.unblockPeer(peerA)
@@ -94,14 +94,14 @@ class BasicConnectionGaterTest {
 
         assertTrue(cg.interceptPeerDial(peerA))
         assertTrue(cg.interceptPeerDial(peerB))
-        assertTrue(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(NullAddress, NullAddress)))
-        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(NullAddress, NullAddress)))
+        assertTrue(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(nullAddress, nullAddress)))
+        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(nullAddress, nullAddress)))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
 
         // make a new gater reusing the datastore to test persistence of unblocks
         cg.close()
@@ -110,14 +110,14 @@ class BasicConnectionGaterTest {
 
         assertTrue(cg.interceptPeerDial(peerA))
         assertTrue(cg.interceptPeerDial(peerB))
-        assertTrue(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(NullAddress, NullAddress)))
-        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(NullAddress, NullAddress)))
+        assertTrue(cg.interceptSecured(Direction.DirInbound, peerA, MockConnectionMultiaddress(nullAddress, nullAddress)))
+        assertTrue(cg.interceptSecured(Direction.DirInbound, peerB, MockConnectionMultiaddress(nullAddress, nullAddress)))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.4/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/1.2.3.5/tcp/1234").expectNoErrors())))
         assertTrue(cg.interceptAddressDial(peerB, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors()))
-        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(NullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
+        assertTrue(cg.interceptAccept(MockConnectionMultiaddress(nullAddress, InetMultiaddress.fromString("/ip4/2.3.4.5/tcp/1234").expectNoErrors())))
 
         cg.close()
         ds.close()

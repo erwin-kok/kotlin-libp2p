@@ -1,11 +1,11 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.ds.rocksdb
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import mu.KotlinLogging
 import org.erwinkok.libp2p.core.datastore.Batch
 import org.erwinkok.libp2p.core.datastore.BatchingDatastore
 import org.erwinkok.libp2p.core.datastore.Datastore

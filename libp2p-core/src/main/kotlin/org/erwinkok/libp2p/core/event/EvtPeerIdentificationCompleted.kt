@@ -5,5 +5,5 @@ package org.erwinkok.libp2p.core.event
 import org.erwinkok.libp2p.core.host.PeerId
 
 data class EvtPeerIdentificationCompleted(
-    val peerId: PeerId
+    val peerId: PeerId,
 ) : EventType()
