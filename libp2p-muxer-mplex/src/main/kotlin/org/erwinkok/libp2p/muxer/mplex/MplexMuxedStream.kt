@@ -13,6 +13,7 @@ import io.ktor.utils.io.WriterJob
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.core.ByteReadPacket
+import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.internal.ChunkBuffer
 import io.ktor.utils.io.core.writeFully
 import io.ktor.utils.io.errors.IOException
@@ -31,7 +32,6 @@ import kotlinx.coroutines.channels.consumeEach
 import org.erwinkok.libp2p.core.network.StreamResetException
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
 import org.erwinkok.libp2p.core.util.SafeChannel
-import org.erwinkok.libp2p.core.util.buildPacket
 import org.erwinkok.libp2p.muxer.mplex.frame.CloseFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.Frame
 import org.erwinkok.libp2p.muxer.mplex.frame.MessageFrame
@@ -103,14 +103,14 @@ class MplexMuxedStream(
         }
     }
 
-    private suspend fun outputDataLoop(channel: ByteReadChannel): Unit = DefaultByteBufferPool.useInstance { buffer: ByteBuffer ->
+    private suspend fun outputDataLoop(channel: ByteReadChannel) = DefaultByteBufferPool.useInstance { buffer: ByteBuffer ->
         while (!channel.isClosedForRead && !outputChannel.isClosedForSend) {
             buffer.clear()
             try {
                 val size = channel.readAvailable(buffer)
                 if (size > 0) {
                     buffer.flip()
-                    val packet = buildPacket(pool) { writeFully(buffer) }
+                    val packet = buildPacket { writeFully(buffer) }
                     val messageFrame = MessageFrame(mplexStreamId, packet)
                     outputChannel.send(messageFrame)
                 }

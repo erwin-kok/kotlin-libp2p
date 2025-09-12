@@ -1,7 +1,6 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.muxer.mplex
 
-import io.ktor.utils.io.CancellationException
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.core.BytePacketBuilder
@@ -15,6 +14,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.channels.consumeEach
@@ -24,7 +24,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
 import org.erwinkok.libp2p.core.network.StreamResetException
 import org.erwinkok.libp2p.core.util.SafeChannel
-import org.erwinkok.libp2p.core.util.buildPacket
 import org.erwinkok.libp2p.muxer.mplex.frame.CloseFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.Frame
 import org.erwinkok.libp2p.muxer.mplex.frame.MessageFrame
@@ -85,7 +84,7 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
             val reader = FrameReader(this, pool)
             val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
             val random = Random.nextBytes(100000)
-            assertTrue(muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(random) }))
+            assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) }))
             val bytes = ByteArray(random.size)
             muxedStream.input.readFully(bytes)
             assertArrayEquals(random, bytes)
@@ -102,7 +101,7 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
             val reader = FrameReader(this, pool)
             val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
             val random = Random.nextBytes(50000)
-            assertTrue(muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(random) }))
+            assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) }))
             for (j in 0 until 5) {
                 val bytes = ByteArray(10000)
                 muxedStream.input.readFully(bytes)
@@ -123,7 +122,7 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
             val random = Random.nextBytes(50000)
             for (j in 0 until 5) {
                 val bytes = random.copyOfRange(j * 10000, (j + 1) * 10000)
-                assertTrue(muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(bytes) }))
+                assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(bytes) }))
             }
             val bytes = ByteArray(random.size)
             muxedStream.input.readFully(bytes)
@@ -160,7 +159,7 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
         }
         assertEquals("Channel has been cancelled", exception1.message)
         // Remote can not send messages
-        assertFalse(muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(Random.nextBytes(100000)) }))
+        assertFalse(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(Random.nextBytes(100000)) }))
         muxedStream.close()
         muxedStream.awaitClosed()
         reader.stop()
@@ -217,7 +216,7 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         val random = Random.nextBytes(50000)
-        assertTrue(muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(random) }))
+        assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) }))
         muxedStream.remoteClosesWriting()
         yield()
         assertFalse(muxedStream.input.isClosedForRead)
@@ -248,12 +247,12 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
         // to fill the input channel (~5 * 1000 bytes) and we also have to fill up the inputChannel with 16 packets.
         // So we have to provide 5 + 16 = 21 packets.
         for (i in 0 until 21) {
-            muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(Random.nextBytes(1000)) })
+            muxedStream.remoteSendsNewMessage(buildPacket { writeFully(Random.nextBytes(1000)) })
             yield() // Give the input coroutine a chance to process the packets
         }
         assertTrue(muxedStream.input.availableForRead > 0)
         val timeout = withTimeoutOrNull(2.seconds) {
-            muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(Random.nextBytes(1000)) })
+            muxedStream.remoteSendsNewMessage(buildPacket { writeFully(Random.nextBytes(1000)) })
         }
         assertNull(timeout)
         muxedStream.close() // Causes all packets in the input channel to be closed
@@ -331,7 +330,7 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
         }
         assertEquals("The channel was closed", exception1.message)
         // Remote can send messages
-        assertTrue(muxedStream.remoteSendsNewMessage(buildPacket(pool) { writeFully(Random.nextBytes(1000)) }))
+        assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(Random.nextBytes(1000)) }))
         muxedStream.close()
         muxedStream.awaitClosed()
         reader.stop()

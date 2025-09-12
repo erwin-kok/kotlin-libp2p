@@ -1,7 +1,6 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.testing
 
-import io.ktor.utils.io.bits.Allocator
 import io.ktor.utils.io.core.internal.ChunkBuffer
 import io.ktor.utils.io.pool.ObjectPool
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -11,7 +10,7 @@ class VerifyingChunkBufferPool(
     private val bufferSize: Int = DEFAULT_BUFFER_SIZE,
 ) : ObjectPool<ChunkBuffer> {
     override val capacity: Int = Int.MAX_VALUE
-    private val allocator: Allocator = DefaultAllocator
+    private val allocator = DefaultAllocator
     private val allocated = mutableSetOf<IdentityWrapper>()
 
     override fun borrow(): ChunkBuffer {

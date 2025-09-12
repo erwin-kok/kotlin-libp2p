@@ -96,7 +96,7 @@ class NoiseSecureConnection(
         }
     }
 
-    private suspend fun appDataOutputLoop(channel: ByteReadChannel): Unit = DefaultByteBufferPool.useInstance { buffer: ByteBuffer ->
+    private suspend fun appDataOutputLoop(channel: ByteReadChannel) = DefaultByteBufferPool.useInstance { buffer: ByteBuffer ->
         val encryptBuffer = ByteArray(MaxPlaintextLength + senderCipherState.macLength)
         while (!channel.isClosedForRead) {
             buffer.clear()

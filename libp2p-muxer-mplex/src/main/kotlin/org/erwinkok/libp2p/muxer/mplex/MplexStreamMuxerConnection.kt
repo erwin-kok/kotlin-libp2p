@@ -147,7 +147,7 @@ class MplexStreamMuxerConnection internal constructor(
             } catch (_: CancellationException) {
                 break
             } catch (e: Exception) {
-                logger.warn { "Unexpected error occurred in mplex mux input loop: ${errorMessage(e)}" }
+                logger.warn { "Unexpected error occurred in mplex mux output loop: ${errorMessage(e)}" }
                 throw e
             }
         }

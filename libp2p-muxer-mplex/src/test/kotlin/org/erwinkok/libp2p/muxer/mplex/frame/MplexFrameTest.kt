@@ -5,7 +5,6 @@ import io.ktor.utils.io.core.ByteReadPacket
 import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.writeFully
 import kotlinx.coroutines.test.runTest
-import org.erwinkok.libp2p.core.util.buildPacket
 import org.erwinkok.libp2p.muxer.mplex.MplexStreamId
 import org.erwinkok.libp2p.testing.TestWithLeakCheck
 import org.erwinkok.libp2p.testing.VerifyingChunkBufferPool
@@ -23,7 +22,7 @@ internal class MplexFrameTest : TestWithLeakCheck {
     fun testMessageNoData() = runTest {
         repeat(100) {
             val streamId = randomMplexStreamId()
-            val expected = MessageFrame(streamId, ByteReadPacket.Companion.Empty)
+            val expected = MessageFrame(streamId, ByteReadPacket.Empty)
             val actual = expected.loopFrame<MessageFrame>()
             assertEquals(expected.initiator, actual.initiator)
             assertEquals(expected.id, actual.id)
@@ -36,7 +35,7 @@ internal class MplexFrameTest : TestWithLeakCheck {
         repeat(100) {
             val data = Random.nextBytes(1024)
             val streamId = randomMplexStreamId()
-            val expected = MessageFrame(streamId, buildPacket(pool) { writeFully(data) })
+            val expected = MessageFrame(streamId, buildPacket { writeFully(data) })
             val actual = expected.loopFrame<MessageFrame>()
             assertEquals(expected.initiator, actual.initiator)
             assertEquals(expected.id, actual.id)

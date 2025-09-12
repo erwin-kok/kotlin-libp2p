@@ -18,7 +18,6 @@ import kotlinx.coroutines.yield
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.StreamResetException
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
-import org.erwinkok.libp2p.core.util.buildPacket
 import org.erwinkok.libp2p.muxer.mplex.frame.CloseFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.MessageFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.NewStreamFrame
@@ -94,7 +93,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
             assertEquals("aName$id", muxedStream.name)
             assertStreamHasId(false, id, muxedStream)
             val random1 = Random.nextBytes(1000)
-            connectionPair.remote.output.writeMplexFrame(MessageFrame(MplexStreamId(true, id), buildPacket(pool) { writeFully(random1) }))
+            connectionPair.remote.output.writeMplexFrame(MessageFrame(MplexStreamId(true, id), buildPacket { writeFully(random1) }))
             connectionPair.remote.output.flush()
             assertFalse(muxedStream.input.isClosedForRead)
             val random2 = ByteArray(random1.size)
@@ -161,7 +160,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
             assertEquals(MplexStreamId(true, it.toLong()).toString(), muxedStream.id)
             assertNewStreamFrameReceived(it, "newStreamName$it", connectionPair.remote)
             val random1 = Random.nextBytes(1000)
-            connectionPair.remote.output.writeMplexFrame(MessageFrame(MplexStreamId(false, it.toLong()), buildPacket(pool) { writeFully(random1) }))
+            connectionPair.remote.output.writeMplexFrame(MessageFrame(MplexStreamId(false, it.toLong()), buildPacket { writeFully(random1) }))
             connectionPair.remote.output.flush()
             assertFalse(muxedStream.input.isClosedForRead)
             val random2 = ByteArray(random1.size)

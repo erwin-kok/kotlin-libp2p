@@ -58,7 +58,7 @@ interface Connection : Utf8Connection, AwaitableClosable, DisposableHandle {
     override fun dispose() {
         try {
             close()
-        } catch (ignore: Throwable) {
+        } catch (_: Throwable) {
             // Ignore
         }
     }
