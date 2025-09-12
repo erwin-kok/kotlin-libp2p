@@ -3,7 +3,6 @@ package org.erwinkok.libp2p.security.noise
 
 import com.southernstorm.noise.protocol.CipherState
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.ktor.network.util.DefaultByteBufferPool
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
@@ -14,7 +13,6 @@ import io.ktor.utils.io.close
 import io.ktor.utils.io.core.internal.ChunkBuffer
 import io.ktor.utils.io.errors.IOException
 import io.ktor.utils.io.pool.ObjectPool
-import io.ktor.utils.io.pool.useInstance
 import io.ktor.utils.io.reader
 import io.ktor.utils.io.writer
 import kotlinx.coroutines.CancellationException
@@ -29,8 +27,6 @@ import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.securitymuxer.SecureConnection
 import org.erwinkok.result.errorMessage
 import java.net.SocketException
-import java.nio.ByteBuffer
-import kotlin.math.min
 
 private val logger = KotlinLogging.logger {}
 
@@ -96,23 +92,15 @@ class NoiseSecureConnection(
         }
     }
 
-    private suspend fun appDataOutputLoop(channel: ByteReadChannel) = DefaultByteBufferPool.useInstance { buffer: ByteBuffer ->
+    private suspend fun appDataOutputLoop(channel: ByteReadChannel) {
         val encryptBuffer = ByteArray(MaxPlaintextLength + senderCipherState.macLength)
         while (!channel.isClosedForRead) {
-            buffer.clear()
             try {
-                val size = channel.readAvailable(buffer)
+                val size = channel.readAvailable(encryptBuffer, 0, MaxPlaintextLength)
                 if (size > 0) {
-                    buffer.flip()
-                    var left = size
-                    while (left > 0) {
-                        val length = min(left, MaxPlaintextLength)
-                        buffer.get(encryptBuffer, 0, length)
-                        val encryptLength = senderCipherState.encryptWithAd(null, encryptBuffer, 0, encryptBuffer, 0, length)
-                        insecureConnection.output.writeShort(encryptLength.toShort())
-                        insecureConnection.output.writeFully(encryptBuffer, 0, encryptLength)
-                        left -= length
-                    }
+                    val encryptLength = senderCipherState.encryptWithAd(null, encryptBuffer, 0, encryptBuffer, 0, size)
+                    insecureConnection.output.writeShort(encryptLength.toShort())
+                    insecureConnection.output.writeFully(encryptBuffer, 0, encryptLength)
                 }
             } catch (_: CancellationException) {
                 break

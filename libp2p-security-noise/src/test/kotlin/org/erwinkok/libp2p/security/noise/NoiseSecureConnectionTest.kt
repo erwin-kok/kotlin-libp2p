@@ -3,7 +3,6 @@
 
 package org.erwinkok.libp2p.security.noise
 
-import io.ktor.utils.io.CancellationException
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.core.readBytes
@@ -11,6 +10,7 @@ import io.ktor.utils.io.core.toByteArray
 import io.ktor.utils.io.errors.IOException
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.writeFully
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async

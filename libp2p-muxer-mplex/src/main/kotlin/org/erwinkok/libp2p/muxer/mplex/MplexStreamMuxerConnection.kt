@@ -6,7 +6,7 @@ package org.erwinkok.libp2p.muxer.mplex
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
-import io.ktor.utils.io.core.BytePacketBuilder
+import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.internal.ChunkBuffer
 import io.ktor.utils.io.pool.ObjectPool
 import kotlinx.atomicfu.locks.ReentrantLock
@@ -191,13 +191,13 @@ class MplexStreamMuxerConnection internal constructor(
                 }
                 if (stream != null) {
                     mutex.unlock()
-                    val builder = BytePacketBuilder(pool)
-                    val data = mplexFrame.packet
-                    builder.writePacket(data.copy())
+                    val packet = buildPacket {
+                        writePacket(mplexFrame.packet.copy())
+                    }
                     // There is (almost) no backpressure. If the reader is slow/blocking, then the entire muxer is blocking.
                     // Give the reader "ReceiveTimeout" time to process, reset stream if too slow.
                     val timeout = withTimeoutOrNull(ReceivePushTimeout) {
-                        stream.remoteSendsNewMessage(builder.build())
+                        stream.remoteSendsNewMessage(packet)
                     }
                     if (timeout == null) {
                         logger.warn { "$this: Reader timeout for stream: $mplexStreamId. Reader is too slow, resetting the stream." }
