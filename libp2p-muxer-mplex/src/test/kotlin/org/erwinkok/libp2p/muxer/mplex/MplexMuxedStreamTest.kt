@@ -4,6 +4,7 @@ package org.erwinkok.libp2p.muxer.mplex
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.core.BytePacketBuilder
+import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.writeFully
 import io.ktor.utils.io.readFully
@@ -28,8 +29,6 @@ import org.erwinkok.libp2p.muxer.mplex.frame.CloseFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.Frame
 import org.erwinkok.libp2p.muxer.mplex.frame.MessageFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.ResetFrame
-import org.erwinkok.libp2p.testing.TestWithLeakCheck
-import org.erwinkok.libp2p.testing.VerifyingChunkBufferPool
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -42,9 +41,7 @@ import org.junit.jupiter.api.assertThrows
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
-internal class MplexMuxedStreamTest : TestWithLeakCheck {
-    override val pool = VerifyingChunkBufferPool()
-
+internal class MplexMuxedStreamTest {
     private val mplexStreamId = MplexStreamId(true, 1234)
     private val mplexStreamName = "AName"
     private val mplexMultiplexer = mockk<MplexStreamMuxerConnection>()
@@ -57,8 +54,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testIdAndName() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         assertEquals("stream000004d2/initiator", muxedStream.id)
         assertEquals(mplexStreamName, muxedStream.name)
         muxedStream.close()
@@ -69,8 +66,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testInitiallyNothingAvailableForRead() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         assertEquals(0, muxedStream.input.availableForRead)
         muxedStream.close()
         muxedStream.awaitClosed()
@@ -81,8 +78,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testReadPacket() = runTest {
         repeat(1000) {
-            val reader = FrameReader(this, pool)
-            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val reader = FrameReader(this)
+            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
             val random = Random.nextBytes(100000)
             assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) }))
             val bytes = ByteArray(random.size)
@@ -98,8 +95,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testReadPacketSplit() = runTest {
         repeat(1000) {
-            val reader = FrameReader(this, pool)
-            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val reader = FrameReader(this)
+            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
             val random = Random.nextBytes(50000)
             assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) }))
             for (j in 0 until 5) {
@@ -117,8 +114,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testReadPacketCombined() = runTest {
         repeat(1000) {
-            val reader = FrameReader(this, pool)
-            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val reader = FrameReader(this)
+            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
             val random = Random.nextBytes(50000)
             for (j in 0 until 5) {
                 val bytes = random.copyOfRange(j * 10000, (j + 1) * 10000)
@@ -136,8 +133,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testReadPacketWait() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         val result = withTimeoutOrNull(500) {
             muxedStream.input.readPacket(10)
         }
@@ -150,8 +147,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testReadPacketAfterCancel() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         muxedStream.input.cancel()
         yield() // Give the input coroutine a chance to cancel
         val exception1 = assertThrows<CancellationException> {
@@ -168,8 +165,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testReadPacketAfterClose() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         muxedStream.close()
@@ -188,8 +185,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testReadPacketAfterRemoteCloses() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         muxedStream.remoteClosesWriting()
@@ -211,8 +208,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testReadPacketAfterRemoteClosesDataInBuffer() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         val random = Random.nextBytes(50000)
@@ -241,12 +238,12 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testNotReading() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         // It seems that the maximum of the input ByteReadChannel is 4088 bytes. So we have to provide enough data
         // to fill the input channel (~5 * 1000 bytes) and we also have to fill up the inputChannel with 16 packets.
         // So we have to provide 5 + 16 = 21 packets.
-        for (i in 0 until 21) {
+        repeat(21) {
             muxedStream.remoteSendsNewMessage(buildPacket { writeFully(Random.nextBytes(1000)) })
             yield() // Give the input coroutine a chance to process the packets
         }
@@ -263,8 +260,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testReadPacketAfterReset() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         val random = Random.nextBytes(50000)
         muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) })
         assertFalse(muxedStream.input.isClosedForRead)
@@ -290,9 +287,9 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testWritePacket() = runTest {
         repeat(1000) {
-            val reader = FrameReader(this, pool)
+            val reader = FrameReader(this)
             val random = Random.nextBytes(10000)
-            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
             muxedStream.output.writeFully(random)
             muxedStream.output.flush()
             muxedStream.close()
@@ -305,9 +302,9 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
     @Test
     fun testWritePacketSplit() = runTest {
         repeat(1000) {
-            val reader = FrameReader(this, pool)
+            val reader = FrameReader(this)
             val random = Random.nextBytes(10000)
-            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+            val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
             muxedStream.output.writeFully(random, 0, 5000)
             muxedStream.output.writeFully(random, 5000, 5000)
             muxedStream.output.flush()
@@ -320,8 +317,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testWritePacketAfterChannelClose() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         muxedStream.output.close()
         yield() // Give the input coroutine a chance to cancel
         val exception1 = assertThrows<CancellationException> {
@@ -340,8 +337,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testWritePacketAfterClose() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         muxedStream.close()
@@ -361,8 +358,8 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
 
     @Test
     fun testWritePacketAfterReset() = runTest {
-        val reader = FrameReader(this, pool)
-        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName, pool)
+        val reader = FrameReader(this)
+        val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         val random = Random.nextBytes(50000)
         muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) })
         assertFalse(muxedStream.input.isClosedForRead)
@@ -391,11 +388,11 @@ internal class MplexMuxedStreamTest : TestWithLeakCheck {
         coVerify(exactly = 0) { mplexMultiplexer.removeStream(any()) }
     }
 
-    private class FrameReader(scope: CoroutineScope, pool: VerifyingChunkBufferPool) {
+    private class FrameReader(scope: CoroutineScope) {
         val frameChannel = SafeChannel<Frame>(16)
         private var closeFrame: CloseFrame? = null
         private var resetFrame: ResetFrame? = null
-        private val builder = BytePacketBuilder(pool)
+        private val builder = BytePacketBuilder()
         private val job = scope.launch {
             frameChannel.consumeEach {
                 when (it) {

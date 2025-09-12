@@ -2,20 +2,17 @@
 package org.erwinkok.libp2p.muxer.mplex.frame
 
 import io.ktor.utils.io.core.ByteReadPacket
+import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.writeFully
 import kotlinx.coroutines.test.runTest
 import org.erwinkok.libp2p.muxer.mplex.MplexStreamId
-import org.erwinkok.libp2p.testing.TestWithLeakCheck
-import org.erwinkok.libp2p.testing.VerifyingChunkBufferPool
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
 
-internal class MplexFrameTest : TestWithLeakCheck {
-    override val pool = VerifyingChunkBufferPool()
-
+internal class MplexFrameTest {
     private val maxStreamId = 0x1000000000000000L
 
     @Test

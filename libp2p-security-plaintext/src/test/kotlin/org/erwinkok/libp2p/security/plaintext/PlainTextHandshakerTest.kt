@@ -14,8 +14,6 @@ import org.erwinkok.libp2p.core.network.securitymuxer.SecureTransport
 import org.erwinkok.libp2p.crypto.CryptoUtil
 import org.erwinkok.libp2p.crypto.KeyType
 import org.erwinkok.libp2p.testing.TestConnection
-import org.erwinkok.libp2p.testing.TestWithLeakCheck
-import org.erwinkok.libp2p.testing.VerifyingChunkBufferPool
 import org.erwinkok.result.Result
 import org.erwinkok.result.coAssertErrorResultMatches
 import org.erwinkok.result.expectNoErrors
@@ -23,9 +21,7 @@ import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-internal class PlainTextHandshakerTest : TestWithLeakCheck {
-    override val pool = VerifyingChunkBufferPool()
-
+internal class PlainTextHandshakerTest {
     @Test
     fun connections() = runTest {
         val clientTpt = newTestTransport(this, KeyType.RSA, 2048)
@@ -89,7 +85,7 @@ internal class PlainTextHandshakerTest : TestWithLeakCheck {
     }
 
     private suspend fun connect(coroutineScope: CoroutineScope, clientTpt: SecureTransport, serverTpt: SecureTransport, localPeer: PeerId, remotePeer: PeerId?): ConnectInfo {
-        val connection = TestConnection(pool)
+        val connection = TestConnection()
         var client: Result<SecureConnection>? = null
         val job = coroutineScope.launch {
             client = clientTpt.secureOutbound(connection.local, localPeer)

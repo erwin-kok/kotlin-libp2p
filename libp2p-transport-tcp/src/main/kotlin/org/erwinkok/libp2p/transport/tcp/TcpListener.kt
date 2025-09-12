@@ -5,8 +5,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.network.sockets.ServerSocket
 import io.ktor.network.sockets.SocketAddress
 import io.ktor.utils.io.core.Closeable
-import io.ktor.utils.io.core.internal.ChunkBuffer
-import io.ktor.utils.io.pool.ObjectPool
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.NetworkProtocol
 import org.erwinkok.libp2p.core.network.transport.Listener
@@ -25,7 +23,6 @@ class TcpListener(
     private val serverSocket: ServerSocket,
     private val bindAddress: InetMultiaddress,
     private val upgrader: Upgrader,
-    private val pool: ObjectPool<ChunkBuffer>,
 ) : Listener, Closeable {
     override val socketAddress: SocketAddress
         get() = serverSocket.localAddress
@@ -39,7 +36,7 @@ class TcpListener(
             return InetMultiaddress.fromSocketAndProtocol(socket.remoteAddress, NetworkProtocol.TCP)
                 .map { remoteAddress ->
                     logger.info { "new inbound connection: $bindAddress <-- $remoteAddress" }
-                    val transportConnection = TcpTransportConnection(socket, bindAddress, remoteAddress, pool)
+                    val transportConnection = TcpTransportConnection(socket, bindAddress, remoteAddress)
                     return upgrader.upgradeInbound(transport, transportConnection)
                 }
         } catch (_: ClosedChannelException) {

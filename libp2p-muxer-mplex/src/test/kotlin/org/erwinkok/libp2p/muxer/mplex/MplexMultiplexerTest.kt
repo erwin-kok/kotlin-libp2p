@@ -2,6 +2,7 @@
 package org.erwinkok.libp2p.muxer.mplex
 
 import io.ktor.utils.io.close
+import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.toByteArray
 import io.ktor.utils.io.core.writeFully
@@ -24,8 +25,6 @@ import org.erwinkok.libp2p.muxer.mplex.frame.NewStreamFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.readMplexFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.writeMplexFrame
 import org.erwinkok.libp2p.testing.TestConnection
-import org.erwinkok.libp2p.testing.TestWithLeakCheck
-import org.erwinkok.libp2p.testing.VerifyingChunkBufferPool
 import org.erwinkok.result.coAssertErrorResult
 import org.erwinkok.result.expectNoErrors
 import org.junit.jupiter.api.Assertions.assertArrayEquals
@@ -39,14 +38,12 @@ import kotlin.experimental.xor
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
-internal class MplexMultiplexerTest : TestWithLeakCheck {
-    override val pool = VerifyingChunkBufferPool()
-
+internal class MplexMultiplexerTest {
     private val maxStreamId = 0x1000000000000000L
 
     @Test
     fun remoteRequestsNewStream() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val id = randomId()
@@ -64,7 +61,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun localRequestNewStream() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
@@ -83,7 +80,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun remoteOpensAndRemoteSends() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val id = randomId()
@@ -108,7 +105,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun remoteOpensAndLocalSends() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val id = randomId()
@@ -131,7 +128,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun localOpenAndLocalSends() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
@@ -152,7 +149,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun localOpensAndRemoteSends() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
@@ -175,7 +172,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun remoteRequestsNewStreamAndCloses() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         val id = randomId()
         connectionPair.remote.output.writeMplexFrame(NewStreamFrame(id, "aName$id"))
@@ -201,7 +198,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun remoteRequestsNewStreamAndLocalCloses() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val id = randomId()
@@ -227,7 +224,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun localRequestNewStreamAndCloses() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
@@ -251,7 +248,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun localRequestNewStreamAndRemoteCloses() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
@@ -277,7 +274,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun basicStreams() = runTest {
-        val connectionPair = TestConnection(pool)
+        val connectionPair = TestConnection()
         val muxa = MplexStreamMuxerConnection(this, connectionPair.local, true)
         val muxb = MplexStreamMuxerConnection(this, connectionPair.remote, false)
         repeat(100) {
@@ -302,7 +299,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun echo() = runTest {
-        val pipe = TestConnection(pool)
+        val pipe = TestConnection()
         val muxa = MplexStreamMuxerConnection(this, pipe.local, true)
         val muxb = MplexStreamMuxerConnection(this, pipe.remote, false)
         repeat(100) {
@@ -330,7 +327,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun stress() = runTest(timeout = 1.minutes) {
-        val pipe = TestConnection(pool)
+        val pipe = TestConnection()
         val muxa = MplexStreamMuxerConnection(this, pipe.local, true)
         val muxb = MplexStreamMuxerConnection(this, pipe.remote, false)
         val messageSize = 40960
@@ -377,7 +374,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun writeAfterClose() = runTest {
-        val pipe = TestConnection(pool)
+        val pipe = TestConnection()
         val muxa = MplexStreamMuxerConnection(this, pipe.local, true)
         val muxb = MplexStreamMuxerConnection(this, pipe.remote, false)
         val message = "Hello world".toByteArray()
@@ -406,7 +403,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun slowReader() = runTest {
-        val pipe = TestConnection(pool)
+        val pipe = TestConnection()
         val muxa = MplexStreamMuxerConnection(this, pipe.local, true)
         val muxb = MplexStreamMuxerConnection(this, pipe.remote, false)
         val message = "Hello world".toByteArray()
@@ -425,7 +422,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun acceptingStreamWhileClosing() = runTest {
-        val pipe = TestConnection(pool)
+        val pipe = TestConnection()
         val mux = MplexStreamMuxerConnection(this, pipe.local, true)
         val job = launch {
             coAssertErrorResult("session shut down") { mux.acceptStream() }
@@ -436,7 +433,7 @@ internal class MplexMultiplexerTest : TestWithLeakCheck {
 
     @Test
     fun acceptingStreamAfterClose() = runTest {
-        val pipe = TestConnection(pool)
+        val pipe = TestConnection()
         val mux = MplexStreamMuxerConnection(this, pipe.local, true)
         mux.close()
         coAssertErrorResult("session shut down") { mux.acceptStream() }

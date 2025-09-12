@@ -2,8 +2,6 @@
 
 package org.erwinkok.libp2p.core.network.swarm
 
-import io.ktor.utils.io.core.internal.ChunkBuffer
-import io.ktor.utils.io.pool.ObjectPool
 import kotlinx.coroutines.Job
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.network.ConnectionStatistics
@@ -22,7 +20,6 @@ class SwarmStream(
     override val streamScope: StreamManagementScope,
     override val statistic: ConnectionStatistics,
     private val onClose: (SwarmStream) -> Unit,
-    override val pool: ObjectPool<ChunkBuffer> = stream.pool,
 ) : AwaitableClosable, Stream, MuxedStream by stream {
     private val _context = Job()
     private val protocol = AtomicReference(ProtocolId.Null)

@@ -10,9 +10,7 @@ import io.ktor.utils.io.ReaderJob
 import io.ktor.utils.io.WriterJob
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
-import io.ktor.utils.io.core.internal.ChunkBuffer
 import io.ktor.utils.io.errors.IOException
-import io.ktor.utils.io.pool.ObjectPool
 import io.ktor.utils.io.reader
 import io.ktor.utils.io.writer
 import kotlinx.coroutines.CancellationException
@@ -37,7 +35,6 @@ class NoiseSecureConnection(
     private val senderCipherState: CipherState,
     override val localIdentity: LocalIdentity,
     override val remoteIdentity: RemoteIdentity,
-    override val pool: ObjectPool<ChunkBuffer> = insecureConnection.pool,
 ) : AwaitableClosable, SecureConnection {
     private val _context = Job(scope.coroutineContext[Job])
     override val jobContext: Job get() = _context

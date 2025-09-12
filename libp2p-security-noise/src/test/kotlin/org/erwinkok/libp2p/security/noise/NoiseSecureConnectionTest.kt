@@ -21,8 +21,6 @@ import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.network.securitymuxer.SecureConnection
 import org.erwinkok.libp2p.crypto.KeyType
 import org.erwinkok.libp2p.testing.TestConnection
-import org.erwinkok.libp2p.testing.TestWithLeakCheck
-import org.erwinkok.libp2p.testing.VerifyingChunkBufferPool
 import org.erwinkok.result.coAssertErrorResultMatches
 import org.erwinkok.result.expectNoErrors
 import org.erwinkok.util.Tuple
@@ -36,9 +34,7 @@ import kotlin.math.min
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
-internal class NoiseSecureConnectionTest : TestWithLeakCheck {
-    override val pool = VerifyingChunkBufferPool()
-
+internal class NoiseSecureConnectionTest {
     @Test
     fun ids() = runTest {
         val initTransport = newTestTransport(this, KeyType.ED25519, 2048)
@@ -88,7 +84,7 @@ internal class NoiseSecureConnectionTest : TestWithLeakCheck {
     fun peerIdMismatchOutboundFailsHandshake() = runTest {
         val initTransport = newTestTransport(this, KeyType.ED25519, 2048)
         val respTransport = newTestTransport(this, KeyType.ED25519, 2048)
-        val connection = TestConnection(pool)
+        val connection = TestConnection()
         val job = this.launch {
             respTransport.secureInbound(connection.remote, null)
         }
@@ -101,7 +97,7 @@ internal class NoiseSecureConnectionTest : TestWithLeakCheck {
     fun peerIdMismatchInboundFailsHandshake() = runTest {
         val initTransport = newTestTransport(this, KeyType.ED25519, 2048)
         val respTransport = newTestTransport(this, KeyType.ED25519, 2048)
-        val connection = TestConnection(pool)
+        val connection = TestConnection()
         val deferred = this.async {
             initTransport.secureOutbound(connection.local, respTransport.localIdentity.peerId).expectNoErrors()
         }
@@ -300,7 +296,7 @@ internal class NoiseSecureConnectionTest : TestWithLeakCheck {
     }
 
     private suspend fun connect(scope: CoroutineScope, initTransport: NoiseTransport, responseTransport: NoiseTransport): Tuple2<SecureConnection, SecureConnection> {
-        val connection = TestConnection(pool)
+        val connection = TestConnection()
         val deferred = scope.async {
             initTransport.secureOutbound(connection.local, responseTransport.localIdentity.peerId).expectNoErrors()
         }

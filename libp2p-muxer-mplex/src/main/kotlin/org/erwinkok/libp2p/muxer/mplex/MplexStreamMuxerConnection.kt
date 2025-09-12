@@ -7,8 +7,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.core.buildPacket
-import io.ktor.utils.io.core.internal.ChunkBuffer
-import io.ktor.utils.io.pool.ObjectPool
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CancellationException
@@ -59,7 +57,6 @@ class MplexStreamMuxerConnection internal constructor(
     private var closeCause: Error? = null
     private val _context = Job(scope.coroutineContext[Job])
     private val receiverJob: Job
-    private val pool: ObjectPool<ChunkBuffer> get() = connection.pool
 
     override val jobContext: Job get() = _context
 
@@ -174,7 +171,7 @@ class MplexStreamMuxerConnection internal constructor(
                 } else {
                     logger.debug { "$this: Remote creates new stream: $id" }
                     val name = streamName(mplexFrame.name, mplexStreamId)
-                    val newStream = MplexMuxedStream(scope, this, outputChannel, mplexStreamId, name, pool)
+                    val newStream = MplexMuxedStream(scope, this, outputChannel, mplexStreamId, name)
                     streams[mplexStreamId] = newStream
                     mutex.unlock()
                     streamChannel.send(newStream)
@@ -255,7 +252,7 @@ class MplexStreamMuxerConnection internal constructor(
         val streamId = MplexStreamId(true, id)
         logger.debug { "$this: We create stream: $id" }
         val name = streamName(newName, streamId)
-        val muxedStream = MplexMuxedStream(scope, this, outputChannel, streamId, name, pool)
+        val muxedStream = MplexMuxedStream(scope, this, outputChannel, streamId, name)
         streams[streamId] = muxedStream
         mutex.unlock()
         outputChannel.send(NewStreamFrame(id, name))

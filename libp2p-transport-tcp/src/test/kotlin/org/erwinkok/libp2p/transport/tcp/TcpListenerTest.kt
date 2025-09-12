@@ -22,14 +22,14 @@ internal class TcpListenerTest {
         val serverSocket = mockk<ServerSocket>()
         val socketAddress = mockk<SocketAddress>()
         every { serverSocket.localAddress } returns socketAddress
-        val listener = TcpListener(mockk(), serverSocket, mockk(), mockk(), mockk())
+        val listener = TcpListener(mockk(), serverSocket, mockk(), mockk())
         assertSame(socketAddress, listener.socketAddress)
     }
 
     @Test
     fun bindAddress() {
         val bindAddress = mockk<InetMultiaddress>()
-        val listener = TcpListener(mockk(), mockk(), bindAddress, mockk(), mockk())
+        val listener = TcpListener(mockk(), mockk(), bindAddress, mockk())
         assertSame(bindAddress, listener.transportAddress)
     }
 
@@ -37,7 +37,7 @@ internal class TcpListenerTest {
     fun close() {
         val serverSocket = mockk<ServerSocket>()
         every { serverSocket.close() } just Runs
-        val listener = TcpListener(mockk(), serverSocket, mockk(), mockk(), mockk())
+        val listener = TcpListener(mockk(), serverSocket, mockk(), mockk())
         listener.close()
         verify { serverSocket.close() }
     }
@@ -46,7 +46,7 @@ internal class TcpListenerTest {
     fun acceptThrows() = runTest {
         val serverSocket = mockk<ServerSocket>()
         coEvery { serverSocket.accept() } throws ClosedChannelException()
-        val listener = TcpListener(mockk(), serverSocket, mockk(), mockk(), mockk())
+        val listener = TcpListener(mockk(), serverSocket, mockk(), mockk())
         coAssertErrorResult("Could not accept connection, channel was closed") { listener.accept() }
     }
 }

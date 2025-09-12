@@ -7,16 +7,12 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.resourcemanager.PeerScope
-import org.erwinkok.libp2p.testing.TestWithLeakCheck
-import org.erwinkok.libp2p.testing.VerifyingChunkBufferPool
 import org.erwinkok.result.expectNoErrors
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 
-internal class MplexStreamMuxerTransportTest : TestWithLeakCheck {
-    override val pool = VerifyingChunkBufferPool()
-
+internal class MplexStreamMuxerTransportTest {
     @Test
     fun testProtocolId() {
         assertEquals("/mplex/6.7.0", MplexStreamMuxerTransport.protocolId.id)

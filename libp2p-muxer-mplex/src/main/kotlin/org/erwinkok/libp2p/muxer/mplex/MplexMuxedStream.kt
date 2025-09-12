@@ -14,10 +14,8 @@ import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.core.ByteReadPacket
 import io.ktor.utils.io.core.buildPacket
-import io.ktor.utils.io.core.internal.ChunkBuffer
 import io.ktor.utils.io.core.writeFully
 import io.ktor.utils.io.errors.IOException
-import io.ktor.utils.io.pool.ObjectPool
 import io.ktor.utils.io.pool.useInstance
 import io.ktor.utils.io.reader
 import io.ktor.utils.io.writer
@@ -47,7 +45,6 @@ class MplexMuxedStream(
     private val outputChannel: Channel<Frame>,
     private val mplexStreamId: MplexStreamId,
     override val name: String,
-    override val pool: ObjectPool<ChunkBuffer>,
 ) : MuxedStream {
     private val inputChannel = SafeChannel<ByteReadPacket>(16)
     private val _context = Job(scope.coroutineContext[Job])

@@ -5,8 +5,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.network.selector.ActorSelectorManager
 import io.ktor.network.sockets.SocketOptions
 import io.ktor.network.sockets.aSocket
-import io.ktor.utils.io.core.internal.ChunkBuffer
-import io.ktor.utils.io.pool.ObjectPool
 import kotlinx.coroutines.CoroutineDispatcher
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Direction
@@ -33,7 +31,6 @@ class TcpTransport private constructor(
     private val upgrader: Upgrader,
     private val resourceManager: ResourceManager,
     private val dispatcher: CoroutineDispatcher,
-    private val pool: ObjectPool<ChunkBuffer> = ChunkBuffer.Pool,
     private val configure: SocketOptions.() -> Unit = {},
 ) : Transport {
     override val proxy: Boolean
@@ -71,7 +68,7 @@ class TcpTransport private constructor(
                     return InetMultiaddress.fromSocketAndProtocol(socket.localAddress, NetworkProtocol.TCP)
                         .map { localAddress ->
                             logger.info { "new outbound connection: $localAddress --> $remoteAddress" }
-                            val transportConnection = TcpTransportConnection(socket, localAddress, remoteAddress, pool)
+                            val transportConnection = TcpTransportConnection(socket, localAddress, remoteAddress)
                             return upgrader.upgradeOutbound(this, transportConnection, Direction.DirOutbound, peerId, connectionScope)
                         }
                 } catch (e: Exception) {
@@ -89,7 +86,7 @@ class TcpTransport private constructor(
                 try {
                     val serverSocket = aSocket(ActorSelectorManager(dispatcher)).tcp().bind(socketAddress, configure)
                     return InetMultiaddress.fromSocketAndProtocol(serverSocket.localAddress, NetworkProtocol.TCP)
-                        .map { boundAddress -> TcpListener(this, serverSocket, boundAddress, upgrader, pool) }
+                        .map { boundAddress -> TcpListener(this, serverSocket, boundAddress, upgrader) }
                 } catch (e: BindException) {
                     return Err("Can not bind to $socketAddress (${errorMessage(e)})")
                 }

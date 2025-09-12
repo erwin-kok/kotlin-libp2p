@@ -4,8 +4,6 @@ package org.erwinkok.libp2p.core.network
 
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.core.internal.ChunkBuffer
-import io.ktor.utils.io.pool.ObjectPool
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.DisposableHandle
@@ -23,7 +21,6 @@ import org.erwinkok.result.map
 import org.erwinkok.result.toErrorIf
 
 interface Connection : Utf8Connection, AwaitableClosable, DisposableHandle {
-    val pool: ObjectPool<ChunkBuffer>
     val input: ByteReadChannel
     val output: ByteWriteChannel
 
