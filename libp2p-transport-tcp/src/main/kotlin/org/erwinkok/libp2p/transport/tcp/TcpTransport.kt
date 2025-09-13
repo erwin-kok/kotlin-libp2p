@@ -6,6 +6,7 @@ import io.ktor.network.selector.ActorSelectorManager
 import io.ktor.network.sockets.SocketOptions
 import io.ktor.network.sockets.aSocket
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.runBlocking
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.core.network.InetMultiaddress
@@ -83,12 +84,14 @@ class TcpTransport private constructor(
         }
         return bindAddress.toSocketAddress()
             .map { socketAddress ->
-                try {
-                    val serverSocket = aSocket(ActorSelectorManager(dispatcher)).tcp().bind(socketAddress, configure)
-                    return InetMultiaddress.fromSocketAndProtocol(serverSocket.localAddress, NetworkProtocol.TCP)
-                        .map { boundAddress -> TcpListener(this, serverSocket, boundAddress, upgrader) }
+                return try {
+                    runBlocking {
+                        val serverSocket = aSocket(ActorSelectorManager(dispatcher)).tcp().bind(socketAddress, configure)
+                        InetMultiaddress.fromSocketAndProtocol(serverSocket.localAddress, NetworkProtocol.TCP)
+                            .map { boundAddress -> TcpListener(this@TcpTransport, serverSocket, boundAddress, upgrader) }
+                    }
                 } catch (e: BindException) {
-                    return Err("Can not bind to $socketAddress (${errorMessage(e)})")
+                    Err("Can not bind to $socketAddress (${errorMessage(e)})")
                 }
             }
     }
