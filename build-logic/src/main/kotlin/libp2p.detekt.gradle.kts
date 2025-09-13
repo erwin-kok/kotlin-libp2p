@@ -1,6 +1,6 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 plugins {
-    io.gitlab.arturbosch.detekt
+    id("io.gitlab.arturbosch.detekt")
 }
 
 detekt {
