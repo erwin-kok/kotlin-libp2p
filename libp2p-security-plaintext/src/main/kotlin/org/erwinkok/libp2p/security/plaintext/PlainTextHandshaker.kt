@@ -4,10 +4,10 @@ package org.erwinkok.libp2p.security.plaintext
 import com.google.protobuf.ByteString
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.core.buildPacket
-import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.writeFully
 import io.ktor.utils.io.readPacket
 import io.ktor.utils.io.writePacket
+import kotlinx.io.readByteArray
 import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.RemoteIdentity
@@ -65,7 +65,7 @@ class PlainTextHandshaker internal constructor(
             val size = connection.input.readUnsignedVarInt()
                 .getOrElse { return Err(it) }
             val packet = connection.input.readPacket(size.toInt())
-                .readBytes()
+                .readByteArray()
             return Ok(Plaintext.Exchange.parseFrom(packet))
         } catch (e: Exception) {
             return Err("Could not parse proto buffer: ${e.message}")

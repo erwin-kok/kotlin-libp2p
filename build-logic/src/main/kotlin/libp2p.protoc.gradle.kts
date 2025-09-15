@@ -1,4 +1,6 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
+import com.google.protobuf.gradle.id
+
 plugins {
     id("libp2p.common")
     id("com.google.protobuf")
@@ -12,8 +14,21 @@ sourceSets {
     }
 }
 
+val protobufVersion = "4.31.1"
+
+dependencies {
+    implementation("com.google.protobuf:protobuf-kotlin:$protobufVersion")
+}
+
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:4.32.1"
+        artifact = "com.google.protobuf:protoc:$protobufVersion"
+    }
+    generateProtoTasks {
+        all().forEach {
+            it.builtins {
+                id("kotlin")
+            }
+        }
     }
 }

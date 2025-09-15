@@ -3,10 +3,10 @@ package org.erwinkok.libp2p.muxer.mplex.frame
 
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.toByteArray
 import io.ktor.utils.io.readPacket
 import io.ktor.utils.io.writeFully
+import kotlinx.io.readByteArray
 import org.erwinkok.libp2p.core.network.readUnsignedVarInt
 import org.erwinkok.libp2p.core.network.writeUnsignedVarInt
 import org.erwinkok.libp2p.muxer.mplex.MplexStreamId
@@ -27,5 +27,5 @@ internal class NewStreamFrame(id: Long, val name: String) : Frame(MplexStreamId(
 internal suspend fun ByteReadChannel.readNewStreamFrame(id: Long): Result<NewStreamFrame> {
     return readUnsignedVarInt()
         .map { length -> readPacket(length.toInt()) }
-        .map { data -> NewStreamFrame(id, String(data.readBytes())) }
+        .map { data -> NewStreamFrame(id, String(data.readByteArray())) }
 }

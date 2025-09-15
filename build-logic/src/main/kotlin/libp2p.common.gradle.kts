@@ -22,6 +22,12 @@ testlogger {
     theme = ThemeType.MOCHA
 }
 
+ktlint {
+    filter {
+        exclude("**/pb/**")
+    }
+}
+
 kover {
     reports {
         filters {
