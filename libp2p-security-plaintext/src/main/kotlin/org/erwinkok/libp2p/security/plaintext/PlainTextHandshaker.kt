@@ -14,6 +14,7 @@ import org.erwinkok.libp2p.core.host.RemoteIdentity
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.readUnsignedVarInt
 import org.erwinkok.libp2p.core.plaintext.pb.Plaintext
+import org.erwinkok.libp2p.core.plaintext.pb.exchange
 import org.erwinkok.libp2p.core.util.writeUnsignedVarInt
 import org.erwinkok.libp2p.crypto.CryptoUtil
 import org.erwinkok.libp2p.crypto.PublicKey
@@ -79,11 +80,10 @@ class PlainTextHandshaker internal constructor(
             val cryptoPubKey = CryptoUtil.convertPublicKey(pubKey)
                 .getOrElse { return Err(it) }
             return Ok(
-                Plaintext.Exchange
-                    .newBuilder()
-                    .setId(ByteString.copyFrom(peerId.idBytes()))
-                    .setPubkey(cryptoPubKey)
-                    .build(),
+                exchange {
+                    id = ByteString.copyFrom(peerId.idBytes())
+                    pubkey = cryptoPubKey
+                },
             )
         } catch (e: Exception) {
             return Err("Could not build to proto buffer: ${e.message}")

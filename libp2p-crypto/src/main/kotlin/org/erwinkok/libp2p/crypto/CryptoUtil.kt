@@ -6,6 +6,8 @@ import com.google.protobuf.InvalidProtocolBufferException
 import org.erwinkok.libp2p.crypto.ecdsa.Ecdsa
 import org.erwinkok.libp2p.crypto.ed25519.Ed25519
 import org.erwinkok.libp2p.crypto.pb.Crypto
+import org.erwinkok.libp2p.crypto.pb.privateKey
+import org.erwinkok.libp2p.crypto.pb.publicKey
 import org.erwinkok.libp2p.crypto.rsa.Rsa
 import org.erwinkok.libp2p.crypto.secp256k1.Secp256k1
 import org.erwinkok.result.Err
@@ -50,11 +52,10 @@ object CryptoUtil {
         return try {
             publicKey.raw()
                 .map {
-                    Crypto.PublicKey.newBuilder()
-                        .setType(publicKey.keyType)
-                        .setData(ByteString.copyFrom(it))
-                        .build()
-                        .toByteArray()
+                    publicKey {
+                        type = publicKey.keyType
+                        data = ByteString.copyFrom(it)
+                    }.toByteArray()
                 }
         } catch (e: Exception) {
             Err("Could not build protocol buffer: ${errorMessage(e)}")
@@ -81,11 +82,10 @@ object CryptoUtil {
         return try {
             privateKey.raw()
                 .map {
-                    Crypto.PrivateKey.newBuilder()
-                        .setType(privateKey.keyType)
-                        .setData(ByteString.copyFrom(it))
-                        .build()
-                        .toByteArray()
+                    privateKey {
+                        type = privateKey.keyType
+                        data = ByteString.copyFrom(it)
+                    }.toByteArray()
                 }
         } catch (e: Exception) {
             Err("Could not build protocol buffer: ${errorMessage(e)}")

@@ -19,6 +19,7 @@ import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.Direction
 import org.erwinkok.libp2p.crypto.CryptoUtil
 import org.erwinkok.libp2p.security.noise.pb.Noise.NoiseHandshakePayload
+import org.erwinkok.libp2p.security.noise.pb.noiseHandshakePayload
 import org.erwinkok.multiformat.multibase.bases.Base64
 import org.erwinkok.result.Err
 import org.erwinkok.result.Error
@@ -97,13 +98,12 @@ class NoiseHandshaker internal constructor(
         val toSign = noiseSignaturePhrase(localState)
         val signedPayload = localIdentity.privateKey.sign(toSign)
             .getOrElse { return Err(it) }
+
         return Ok(
-            NoiseHandshakePayload
-                .newBuilder()
-                .setIdentityKey(ByteString.copyFrom(localPublicKey))
-                .setIdentitySig(ByteString.copyFrom(signedPayload))
-                .build()
-                .toByteArray(),
+            noiseHandshakePayload {
+                identityKey = ByteString.copyFrom(localPublicKey)
+                identitySig = ByteString.copyFrom(signedPayload)
+            }.toByteArray(),
         )
     }
 
