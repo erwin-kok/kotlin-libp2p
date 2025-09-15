@@ -35,6 +35,7 @@ import org.erwinkok.libp2p.core.host.Host
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.RemoteIdentity
 import org.erwinkok.libp2p.core.identify.pb.DbIdentify
+import org.erwinkok.libp2p.core.identify.pb.identify
 import org.erwinkok.libp2p.core.network.Connectedness
 import org.erwinkok.libp2p.core.network.InetMultiaddress
 import org.erwinkok.libp2p.core.network.Network
@@ -364,7 +365,7 @@ class IdService(
 
     private suspend fun readMessagesFromStream(stream: Stream): Result<DbIdentify.Identify> {
         val builder = DbIdentify.Identify.newBuilder()
-        for (i in 0 until MaxMessages) {
+        repeat(MaxMessages) {
             val size = stream.input.readUnsignedVarInt()
                 .map { it.toLong() }
                 .getOrElse {
@@ -410,20 +411,20 @@ class IdService(
             stream.output.flush()
             return
         }
-        val message1 = DbIdentify.Identify.newBuilder()
-            .setProtocolVersion(identify.protocolVersion)
-            .setAgentVersion(identify.agentVersion)
-            .setPublicKey(identify.publicKey)
-            .addAllListenAddrs(identify.listenAddrsList)
-            .setObservedAddr(identify.observedAddr)
-            .addAllProtocols(identify.protocolsList)
-            .build()
+        val message1 = identify {
+            protocolVersion = identify.protocolVersion
+            agentVersion = identify.agentVersion
+            publicKey = identify.publicKey
+            listenAddrs.addAll(identify.listenAddrsList)
+            observedAddr = identify.observedAddr
+            protocols.addAll(identify.protocolsList)
+        }
         val bytes1 = message1.toByteArray()
         stream.output.writeUnsignedVarInt(bytes1.size)
         stream.output.writeFully(bytes1)
-        val message2 = DbIdentify.Identify.newBuilder()
-            .setSignedPeerRecord(identify.signedPeerRecord)
-            .build()
+        val message2 = identify {
+            signedPeerRecord = identify.signedPeerRecord
+        }
         val bytes2 = message2.toByteArray()
         stream.output.writeUnsignedVarInt(bytes2.size)
         stream.output.writeFully(bytes2)
@@ -589,7 +590,7 @@ class IdService(
     }
 
     private fun consumeSignedPeerRecord(peerId: PeerId, signedPeerRecord: Envelope): Result<List<InetMultiaddress>> {
-        val id = PeerId.fromPublicKey(signedPeerRecord.publicKey)
+        val id = PeerId.fromPublicKey(signedPeerRecord.publicKeyArray)
             .getOrElse {
                 return Err("failed to derive PeerId: ${errorMessage(it)}")
             }

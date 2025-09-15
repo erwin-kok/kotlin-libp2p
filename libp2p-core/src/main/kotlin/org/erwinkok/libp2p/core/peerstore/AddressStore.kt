@@ -144,7 +144,7 @@ class AddressStore private constructor(
         if (record !is PeerRecord) {
             return Err("unable to process envelope: not a PeerRecord")
         }
-        if (!record.peerId.matchesPublicKey(recordEnvelope.publicKey)) {
+        if (!record.peerId.matchesPublicKey(recordEnvelope.publicKeyArray)) {
             return Err("signing key does not match PeerId in PeerRecord")
         }
         val rawBytes = recordEnvelope.marshal()
