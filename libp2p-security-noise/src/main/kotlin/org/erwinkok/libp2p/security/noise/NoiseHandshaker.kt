@@ -7,6 +7,10 @@ import com.southernstorm.noise.protocol.DHState
 import com.southernstorm.noise.protocol.HandshakeState
 import com.southernstorm.noise.protocol.Noise
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.ktor.utils.io.readFully
+import io.ktor.utils.io.readShort
+import io.ktor.utils.io.writeFully
+import io.ktor.utils.io.writeShort
 import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.PeerId.Companion.fromPublicKey

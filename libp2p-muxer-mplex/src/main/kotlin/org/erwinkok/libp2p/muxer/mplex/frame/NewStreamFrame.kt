@@ -5,6 +5,7 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.toByteArray
+import io.ktor.utils.io.readPacket
 import io.ktor.utils.io.writeFully
 import org.erwinkok.libp2p.core.network.readUnsignedVarInt
 import org.erwinkok.libp2p.core.network.writeUnsignedVarInt

@@ -2,6 +2,7 @@
 package org.erwinkok.libp2p.examples.chat
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope

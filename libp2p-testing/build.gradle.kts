@@ -21,7 +21,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.debug)
     implementation(libs.ktor.network)
     implementation(libs.multiformat)
-
+    testRuntimeOnly(libs.logback.classic)
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

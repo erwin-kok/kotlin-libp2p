@@ -4,7 +4,9 @@ package org.erwinkok.libp2p.core.network
 
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.readByte
 import io.ktor.utils.io.readFully
+import io.ktor.utils.io.writeByte
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.channels.ClosedReceiveChannelException

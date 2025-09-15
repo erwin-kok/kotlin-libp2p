@@ -5,9 +5,13 @@
 package org.erwinkok.libp2p.testing.testsuites.transport
 
 import io.ktor.utils.io.close
+import io.ktor.utils.io.core.remaining
 import io.ktor.utils.io.core.toByteArray
 import io.ktor.utils.io.readFully
+import io.ktor.utils.io.readInt
+import io.ktor.utils.io.readRemaining
 import io.ktor.utils.io.writeFully
+import io.ktor.utils.io.writeInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -118,8 +122,7 @@ class TransportTestSuite(private val transportName: String) {
         }
         val streamA = dialConnection.openStream().expectNoErrors()
         streamA.output.writeFully(TestData)
-        streamA.output.flush()
-        streamA.output.close()
+        streamA.output.flushAndClose()
         val buffer = ByteArray(TestData.size)
         streamA.input.readFully(buffer)
         assertArrayEquals(TestData, buffer)
@@ -150,8 +153,7 @@ class TransportTestSuite(private val transportName: String) {
             streamA.output.writeFully(TestData)
             streamA.output.flush()
             streamA.output.writeInt(it)
-            streamA.output.flush()
-            streamA.output.close()
+            streamA.output.flushAndClose()
             val buffer = ByteArray(TestData.size)
             streamA.input.readFully(buffer)
             assertArrayEquals(TestData, buffer)
@@ -177,7 +179,7 @@ class TransportTestSuite(private val transportName: String) {
     private val messageSize = 2048
 
     private suspend fun fullClose(stream: MuxedStream) {
-        stream.output.close()
+        stream.output.flushAndClose()
         val packet = stream.input.readRemaining()
         assertEquals(0, packet.remaining)
         packet.close()

@@ -12,12 +12,14 @@ import io.ktor.utils.io.ReaderJob
 import io.ktor.utils.io.WriterJob
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
-import io.ktor.utils.io.core.ByteReadPacket
 import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.writeFully
-import io.ktor.utils.io.errors.IOException
+import io.ktor.utils.io.invokeOnCompletion
+import io.ktor.utils.io.isCompleted
 import io.ktor.utils.io.pool.useInstance
+import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.reader
+import io.ktor.utils.io.writePacket
 import io.ktor.utils.io.writer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
@@ -27,9 +29,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.io.IOException
+import kotlinx.io.Source
 import org.erwinkok.libp2p.core.network.StreamResetException
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
-import org.erwinkok.libp2p.core.util.SafeChannel
 import org.erwinkok.libp2p.muxer.mplex.frame.CloseFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.Frame
 import org.erwinkok.libp2p.muxer.mplex.frame.MessageFrame
@@ -46,7 +49,7 @@ class MplexMuxedStream(
     private val mplexStreamId: MplexStreamId,
     override val name: String,
 ) : MuxedStream {
-    private val inputChannel = SafeChannel<ByteReadPacket>(16)
+    private val inputChannel = Channel<Source>(16)
     private val _context = Job(scope.coroutineContext[Job])
     private val writerJob: WriterJob
     private val readerJob: ReaderJob
@@ -150,7 +153,7 @@ class MplexMuxedStream(
         return "mplex-<$mplexStreamId>"
     }
 
-    internal suspend fun remoteSendsNewMessage(packet: ByteReadPacket): Boolean {
+    internal suspend fun remoteSendsNewMessage(packet: Source): Boolean {
         if (inputChannel.isClosedForSend) {
             packet.close()
             return false

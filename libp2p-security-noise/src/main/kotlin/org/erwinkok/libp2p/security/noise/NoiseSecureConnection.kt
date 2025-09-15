@@ -6,18 +6,26 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.ClosedWriteChannelException
 import io.ktor.utils.io.ReaderJob
 import io.ktor.utils.io.WriterJob
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
-import io.ktor.utils.io.errors.IOException
+import io.ktor.utils.io.invokeOnCompletion
+import io.ktor.utils.io.readAvailable
+import io.ktor.utils.io.readFully
+import io.ktor.utils.io.readShort
 import io.ktor.utils.io.reader
+import io.ktor.utils.io.writeFully
+import io.ktor.utils.io.writeShort
 import io.ktor.utils.io.writer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.io.EOFException
+import kotlinx.io.IOException
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.RemoteIdentity
@@ -78,6 +86,9 @@ class NoiseSecureConnection(
             } catch (_: SocketException) {
                 channel.close(IOException("Failed reading from closed connection"))
                 break
+            } catch (_: EOFException) {
+                channel.close(IOException("Failed reading from closed connection"))
+                break
             } catch (e: Exception) {
                 logger.warn { "Unexpected error occurred in noise input loop: ${errorMessage(e)}" }
                 throw e
@@ -100,6 +111,9 @@ class NoiseSecureConnection(
                     insecureConnection.output.writeFully(encryptBuffer, 0, encryptLength)
                 }
             } catch (_: CancellationException) {
+                break
+            } catch (_: ClosedWriteChannelException) {
+                channel.cancel(IOException("Failed writing to closed connection"))
                 break
             } catch (e: Exception) {
                 logger.warn { "Unexpected error occurred in noise output loop: ${errorMessage(e)}" }

@@ -4,7 +4,7 @@ package org.erwinkok.libp2p.core.util
 
 import io.ktor.utils.io.core.BytePacketBuilder
 import io.ktor.utils.io.core.ByteReadPacket
-import io.ktor.utils.io.core.EOFException
+import kotlinx.io.EOFException
 import org.erwinkok.multiformat.util.UVarInt
 import org.erwinkok.result.Err
 import org.erwinkok.result.Errors

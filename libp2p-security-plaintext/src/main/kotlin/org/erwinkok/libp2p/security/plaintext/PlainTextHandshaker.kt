@@ -6,6 +6,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.writeFully
+import io.ktor.utils.io.readPacket
+import io.ktor.utils.io.writePacket
 import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.PeerId
 import org.erwinkok.libp2p.core.host.RemoteIdentity

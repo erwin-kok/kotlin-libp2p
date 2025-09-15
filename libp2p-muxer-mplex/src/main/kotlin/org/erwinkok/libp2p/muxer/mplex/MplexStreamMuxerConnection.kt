@@ -7,6 +7,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.core.buildPacket
+import io.ktor.utils.io.core.copy
+import io.ktor.utils.io.core.writePacket
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CancellationException
@@ -14,6 +16,7 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
@@ -22,7 +25,6 @@ import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
 import org.erwinkok.libp2p.core.network.streammuxer.StreamMuxerConnection
-import org.erwinkok.libp2p.core.util.SafeChannel
 import org.erwinkok.libp2p.muxer.mplex.frame.CloseFrame
 import org.erwinkok.libp2p.muxer.mplex.frame.Frame
 import org.erwinkok.libp2p.muxer.mplex.frame.MessageFrame
@@ -48,8 +50,8 @@ class MplexStreamMuxerConnection internal constructor(
     private val connection: Connection,
     private val initiator: Boolean,
 ) : StreamMuxerConnection, AwaitableClosable {
-    private val streamChannel = SafeChannel<MuxedStream>(16)
-    private val outputChannel = SafeChannel<Frame>(16)
+    private val streamChannel = Channel<MuxedStream>(16)
+    private val outputChannel = Channel<Frame>(16)
     private val mutex = ReentrantLock()
     private val streams = mutableMapOf<MplexStreamId, MplexMuxedStream>()
     private val nextId = AtomicLong(0)

@@ -1,11 +1,11 @@
 // Copyright (c) 2023 Erwin Kok. BSD-3-Clause license. See LICENSE file for more details.
 package org.erwinkok.libp2p.muxer.mplex.frame
 
-import io.ktor.utils.io.core.ByteReadPacket
 import io.ktor.utils.io.core.buildPacket
-import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.writeFully
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.Buffer
+import kotlinx.io.readByteArray
 import org.erwinkok.libp2p.muxer.mplex.MplexStreamId
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -19,11 +19,11 @@ internal class MplexFrameTest {
     fun testMessageNoData() = runTest {
         repeat(100) {
             val streamId = randomMplexStreamId()
-            val expected = MessageFrame(streamId, ByteReadPacket.Empty)
+            val expected = MessageFrame(streamId, Buffer())
             val actual = expected.loopFrame<MessageFrame>()
             assertEquals(expected.initiator, actual.initiator)
             assertEquals(expected.id, actual.id)
-            assertEquals(expected.packet, actual.packet)
+            assertArrayEquals(expected.packet.readByteArray(), actual.packet.readByteArray())
         }
     }
 
@@ -36,7 +36,7 @@ internal class MplexFrameTest {
             val actual = expected.loopFrame<MessageFrame>()
             assertEquals(expected.initiator, actual.initiator)
             assertEquals(expected.id, actual.id)
-            assertArrayEquals(data, actual.packet.readBytes())
+            assertArrayEquals(data, actual.packet.readByteArray())
         }
     }
 

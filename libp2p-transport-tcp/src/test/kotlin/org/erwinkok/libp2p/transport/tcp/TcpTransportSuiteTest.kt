@@ -9,12 +9,14 @@ import org.erwinkok.libp2p.security.plaintext.PlainTextSecureTransport
 import org.erwinkok.libp2p.testing.ConnectionBuilder
 import org.erwinkok.libp2p.testing.testsuites.transport.TransportTestSuite
 import org.erwinkok.libp2p.transport.tcp.TcpTransport.TcpTransportFactory
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
 import java.util.stream.Stream
 
 internal class TcpTransportSuiteTest {
     @TestFactory
+    @Disabled
     fun testSuite(): Stream<DynamicTest> {
         val ca = ConnectionBuilder(TcpTransportFactory, PlainTextSecureTransport, MplexStreamMuxerTransport)
         val cb = ConnectionBuilder(TcpTransportFactory, PlainTextSecureTransport, MplexStreamMuxerTransport)

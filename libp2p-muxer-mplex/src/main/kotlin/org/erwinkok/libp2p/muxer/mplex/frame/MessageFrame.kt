@@ -3,14 +3,17 @@ package org.erwinkok.libp2p.muxer.mplex.frame
 
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.core.ByteReadPacket
+import io.ktor.utils.io.core.remaining
+import io.ktor.utils.io.readPacket
+import io.ktor.utils.io.writePacket
+import kotlinx.io.Source
 import org.erwinkok.libp2p.core.network.readUnsignedVarInt
 import org.erwinkok.libp2p.core.network.writeUnsignedVarInt
 import org.erwinkok.libp2p.muxer.mplex.MplexStreamId
 import org.erwinkok.result.Result
 import org.erwinkok.result.map
 
-internal class MessageFrame(streamId: MplexStreamId, val packet: ByteReadPacket) : Frame(streamId) {
+internal class MessageFrame(streamId: MplexStreamId, val packet: Source) : Frame(streamId) {
     override val type: Int
         get() {
             return if (streamId.initiator) MessageInitiatorTag else MessageReceiverTag
