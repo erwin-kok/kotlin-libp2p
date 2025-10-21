@@ -2,16 +2,16 @@
 
 package org.erwinkok.libp2p.core.util
 
-import io.ktor.utils.io.core.BytePacketBuilder
-import io.ktor.utils.io.core.ByteReadPacket
 import kotlinx.io.EOFException
+import kotlinx.io.Sink
+import kotlinx.io.Source
 import org.erwinkok.multiformat.util.UVarInt
 import org.erwinkok.result.Err
 import org.erwinkok.result.Errors
 import org.erwinkok.result.Ok
 import org.erwinkok.result.Result
 
-fun ByteReadPacket.readUnsignedVarInt(): Result<ULong> {
+fun Source.readUnsignedVarInt(): Result<ULong> {
     return UVarInt.readUnsignedVarInt {
         try {
             Ok(readByte().toUByte())
@@ -21,11 +21,11 @@ fun ByteReadPacket.readUnsignedVarInt(): Result<ULong> {
     }
 }
 
-fun BytePacketBuilder.writeUnsignedVarInt(x: Int): Result<Int> {
+fun Sink.writeUnsignedVarInt(x: Int): Result<Int> {
     return writeUnsignedVarInt(x.toULong())
 }
 
-fun BytePacketBuilder.writeUnsignedVarInt(x: ULong): Result<Int> {
+fun Sink.writeUnsignedVarInt(x: ULong): Result<Int> {
     return UVarInt.writeUnsignedVarInt(x) {
         try {
             this.writeByte(it)

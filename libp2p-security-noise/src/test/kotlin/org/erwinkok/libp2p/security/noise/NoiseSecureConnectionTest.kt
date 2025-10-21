@@ -28,7 +28,6 @@ import org.erwinkok.util.Tuple
 import org.erwinkok.util.Tuple2
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.experimental.xor
@@ -223,25 +222,8 @@ internal class NoiseSecureConnectionTest {
         val exception = assertThrows<IOException> {
             initConnection.input.readFully(random2)
         }
-        assertEquals("Failed reading from closed connection", exception.message)
+        assertEquals("Not enough data available", exception.message)
         job.join()
-        initConnection.close()
-        responseConnection.close()
-    }
-
-    @Test
-    @Disabled
-    fun pingPongErrorWritingRemoteCancelsInput() = runTest {
-        val initTransport = newTestTransport(this, KeyType.ED25519, 2048)
-        val respTransport = newTestTransport(this, KeyType.ED25519, 2048)
-        val (initConnection, responseConnection) = connect(this, initTransport, respTransport)
-        val random1 = Random.nextBytes(100000)
-        responseConnection.input.cancel()
-        val exception = assertThrows<IOException> {
-            initConnection.output.writeFully(random1)
-            initConnection.output.flush()
-        }
-        assertEquals("Failed writing to closed connection", exception.message)
         initConnection.close()
         responseConnection.close()
     }

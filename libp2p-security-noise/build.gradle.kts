@@ -13,6 +13,7 @@ dependencies {
     implementation(projects.libp2pCrypto)
 
     implementation(libs.kotlin.logging)
+    implementation(libs.kotlinx.atomicfu)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.ktor.network)
     implementation(libs.multiformat)

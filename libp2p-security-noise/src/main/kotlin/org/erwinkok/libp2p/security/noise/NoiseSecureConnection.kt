@@ -2,16 +2,11 @@
 package org.erwinkok.libp2p.security.noise
 
 import com.southernstorm.noise.protocol.CipherState
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.utils.io.ByteChannel
-import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.ClosedWriteChannelException
 import io.ktor.utils.io.ReaderJob
 import io.ktor.utils.io.WriterJob
+import io.ktor.utils.io.availableForRead
 import io.ktor.utils.io.cancel
-import io.ktor.utils.io.close
-import io.ktor.utils.io.invokeOnCompletion
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.readShort
@@ -19,120 +14,70 @@ import io.ktor.utils.io.reader
 import io.ktor.utils.io.writeFully
 import io.ktor.utils.io.writeShort
 import io.ktor.utils.io.writer
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.ClosedReceiveChannelException
-import kotlinx.io.EOFException
-import kotlinx.io.IOException
 import org.erwinkok.libp2p.core.base.AwaitableClosable
 import org.erwinkok.libp2p.core.host.LocalIdentity
 import org.erwinkok.libp2p.core.host.RemoteIdentity
 import org.erwinkok.libp2p.core.network.Connection
+import org.erwinkok.libp2p.core.network.ConnectionBase
 import org.erwinkok.libp2p.core.network.securitymuxer.SecureConnection
-import org.erwinkok.result.errorMessage
-import java.net.SocketException
-
-private val logger = KotlinLogging.logger {}
 
 class NoiseSecureConnection(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val insecureConnection: Connection,
     private val receiverCipherState: CipherState,
     private val senderCipherState: CipherState,
     override val localIdentity: LocalIdentity,
     override val remoteIdentity: RemoteIdentity,
-) : AwaitableClosable, SecureConnection {
-    private val _context = Job(scope.coroutineContext[Job])
-    override val jobContext: Job get() = _context
-    override val input: ByteReadChannel = ByteChannel(false).also { attachForReading(it) }
-    override val output: ByteWriteChannel = ByteChannel(false).also { attachForWriting(it) }
-
-    private fun attachForReading(channel: ByteChannel): WriterJob =
-        scope.writer(_context + CoroutineName("noise-conn-input-loop"), channel) {
-            appDataInputLoop(this.channel)
-        }.apply {
-            invokeOnCompletion {
+) : ConnectionBase(scope), AwaitableClosable, SecureConnection {
+    override fun attachForReadingImpl(channel: ByteChannel): WriterJob =
+        scope.writer(context + CoroutineName("noise-conn-input-loop"), channel) {
+            try {
+                val decryptBuffer = ByteArray(MaxPlaintextLength + senderCipherState.macLength)
+                while (!this.channel.isClosedForWrite && !insecureConnection.input.isClosedForRead) {
+                    val length = insecureConnection.input.readShort().toInt()
+                    require(length < MaxPlaintextLength)
+                    insecureConnection.input.readFully(decryptBuffer, 0, length)
+                    val decryptLength = receiverCipherState.decryptWithAd(null, decryptBuffer, 0, decryptBuffer, 0, length)
+                    this.channel.writeFully(decryptBuffer, 0, decryptLength)
+                    this.channel.flush()
+                }
+            } finally {
                 insecureConnection.input.cancel()
             }
         }
 
-    private fun attachForWriting(channel: ByteChannel): ReaderJob =
-        scope.reader(_context + CoroutineName("noise-conn-output-loop"), channel) {
-            appDataOutputLoop(this.channel)
-        }.apply {
-            invokeOnCompletion {
-                insecureConnection.output.close()
-            }
-        }
-
-    private suspend fun appDataInputLoop(channel: ByteWriteChannel) {
-        val decryptBuffer = ByteArray(MaxPlaintextLength + senderCipherState.macLength)
-        while (!channel.isClosedForWrite) {
+    override fun attachForWritingImpl(channel: ByteChannel): ReaderJob =
+        scope.reader(context + CoroutineName("noise-conn-output-loop"), channel) {
             try {
-                val length = insecureConnection.input.readShort().toInt()
-                require(length < MaxPlaintextLength)
-                insecureConnection.input.readFully(decryptBuffer, 0, length)
-                val decryptLength = receiverCipherState.decryptWithAd(null, decryptBuffer, 0, decryptBuffer, 0, length)
-                channel.writeFully(decryptBuffer, 0, decryptLength)
-                channel.flush()
-            } catch (_: CancellationException) {
-                break
-            } catch (_: ClosedReceiveChannelException) {
-                // insecureConnection.input has been closed
-                channel.close(IOException("Failed reading from closed connection"))
-                break
-            } catch (_: SocketException) {
-                channel.close(IOException("Failed reading from closed connection"))
-                break
-            } catch (_: EOFException) {
-                channel.close(IOException("Failed reading from closed connection"))
-                break
-            } catch (e: Exception) {
-                logger.warn { "Unexpected error occurred in noise input loop: ${errorMessage(e)}" }
-                throw e
-            }
-        }
-        val closedCause = channel.closedCause
-        if (closedCause != null && closedCause !is IOException) {
-            throw closedCause
-        }
-    }
-
-    private suspend fun appDataOutputLoop(channel: ByteReadChannel) {
-        val encryptBuffer = ByteArray(MaxPlaintextLength + senderCipherState.macLength)
-        while (!channel.isClosedForRead) {
-            try {
-                val size = channel.readAvailable(encryptBuffer, 0, MaxPlaintextLength)
-                if (size > 0) {
-                    val encryptLength = senderCipherState.encryptWithAd(null, encryptBuffer, 0, encryptBuffer, 0, size)
-                    insecureConnection.output.writeShort(encryptLength.toShort())
-                    insecureConnection.output.writeFully(encryptBuffer, 0, encryptLength)
+                val encryptBuffer = ByteArray(MaxPlaintextLength + senderCipherState.macLength)
+                while (!this.channel.isClosedForRead && !insecureConnection.output.isClosedForWrite) {
+                    if (channel.availableForRead == 0) {
+                        channel.awaitContent()
+                        continue
+                    }
+                    val size = this.channel.readAvailable(encryptBuffer, 0, MaxPlaintextLength)
+                    if (size > 0) {
+                        val encryptLength = senderCipherState.encryptWithAd(null, encryptBuffer, 0, encryptBuffer, 0, size)
+                        insecureConnection.output.writeShort(encryptLength.toShort())
+                        insecureConnection.output.writeFully(encryptBuffer, 0, encryptLength)
+                        insecureConnection.output.flush()
+                    }
                 }
-            } catch (_: CancellationException) {
-                break
-            } catch (_: ClosedWriteChannelException) {
-                channel.cancel(IOException("Failed writing to closed connection"))
-                break
-            } catch (e: Exception) {
-                logger.warn { "Unexpected error occurred in noise output loop: ${errorMessage(e)}" }
-                throw e
+            } finally {
+                insecureConnection.output.flushAndClose()
             }
-            insecureConnection.output.flush()
         }
-        if (!channel.isClosedForRead) {
-            channel.cancel(IOException("Failed writing to closed connection"))
-        } else {
-            channel.closedCause?.let { throw it }
-        }
-    }
 
-    override fun close() {
-        input.cancel()
-        output.close()
-        insecureConnection.close()
-        _context.complete()
+    override fun actualClose(): Throwable? {
+        return try {
+            super.close()
+            insecureConnection.close()
+            null
+        } catch (cause: Throwable) {
+            cause
+        }
     }
 
     companion object {
