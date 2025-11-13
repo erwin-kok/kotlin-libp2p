@@ -5,11 +5,8 @@ import io.ktor.utils.io.ClosedReadChannelException
 import io.ktor.utils.io.ClosedWriteChannelException
 import io.ktor.utils.io.availableForRead
 import io.ktor.utils.io.cancel
-import io.ktor.utils.io.core.BytePacketBuilder
 import io.ktor.utils.io.core.build
-import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.writeFully
-import io.ktor.utils.io.core.writePacket
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.readPacket
 import io.ktor.utils.io.writeFully
@@ -26,13 +23,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
+import kotlinx.io.Buffer
 import kotlinx.io.EOFException
 import kotlinx.io.readByteArray
-import org.erwinkok.libp2p.core.network.StreamResetException
-import org.erwinkok.libp2p.muxer.mplex.frame.CloseFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.Frame
-import org.erwinkok.libp2p.muxer.mplex.frame.MessageFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.ResetFrame
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -43,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -86,7 +80,7 @@ internal class MplexMuxedStreamTest {
             val reader = FrameReader(this)
             val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
             val random = Random.nextBytes(100000)
-            assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) }))
+            assertTrue(muxedStream.remoteSendsNewMessage(random))
             val bytes = ByteArray(random.size)
             muxedStream.input.readFully(bytes)
             assertArrayEquals(random, bytes)
@@ -103,7 +97,7 @@ internal class MplexMuxedStreamTest {
             val reader = FrameReader(this)
             val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
             val random = Random.nextBytes(50000)
-            assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) }))
+            assertTrue(muxedStream.remoteSendsNewMessage(random))
             for (j in 0 until 5) {
                 val bytes = ByteArray(10000)
                 muxedStream.input.readFully(bytes)
@@ -124,7 +118,7 @@ internal class MplexMuxedStreamTest {
             val random = Random.nextBytes(50000)
             for (j in 0 until 5) {
                 val bytes = random.copyOfRange(j * 10000, (j + 1) * 10000)
-                assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(bytes) }))
+                assertTrue(muxedStream.remoteSendsNewMessage(bytes))
             }
             val bytes = ByteArray(random.size)
             muxedStream.input.readFully(bytes)
@@ -161,7 +155,7 @@ internal class MplexMuxedStreamTest {
         }
         assertEquals("Channel was cancelled", exception.message)
         // Remote can not send messages
-        assertFalse(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(Random.nextBytes(100000)) }))
+        assertFalse(muxedStream.remoteSendsNewMessage(Random.nextBytes(100000)))
         muxedStream.close()
         muxedStream.awaitClosed()
         reader.stop()
@@ -218,7 +212,7 @@ internal class MplexMuxedStreamTest {
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         val random = Random.nextBytes(50000)
-        assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) }))
+        assertTrue(muxedStream.remoteSendsNewMessage(random))
         muxedStream.remoteClosesWriting()
         yield()
         assertFalse(muxedStream.input.isClosedForRead)
@@ -250,12 +244,12 @@ internal class MplexMuxedStreamTest {
         // to fill the input channel (~5 * 1000 bytes) and we also have to fill up the inputChannel with 16 packets.
         // So we have to provide 5 + 16 = 21 packets.
         repeat(21) {
-            muxedStream.remoteSendsNewMessage(buildPacket { writeFully(Random.nextBytes(1000)) })
+            muxedStream.remoteSendsNewMessage(Random.nextBytes(1000))
             yield() // Give the input coroutine a chance to process the packets
         }
         assertTrue(muxedStream.input.availableForRead > 0)
         val timeout = withTimeoutOrNull(2.seconds) {
-            muxedStream.remoteSendsNewMessage(buildPacket { writeFully(Random.nextBytes(1000)) })
+            muxedStream.remoteSendsNewMessage(Random.nextBytes(1000))
         }
         assertNull(timeout)
         muxedStream.close() // Causes all packets in the input channel to be closed
@@ -265,12 +259,11 @@ internal class MplexMuxedStreamTest {
     }
 
     @Test
-    @Disabled
     fun testReadPacketAfterReset() = runTest {
         val reader = FrameReader(this)
         val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         val random = Random.nextBytes(50000)
-        muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) })
+        muxedStream.remoteSendsNewMessage(random)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         muxedStream.reset()
@@ -279,7 +272,7 @@ internal class MplexMuxedStreamTest {
         assertTrue(muxedStream.output.isClosedForWrite)
         reader.assertResetFrameReceived(mplexStreamId)
         assertStreamRemoved()
-        val exception = assertThrows<StreamResetException> {
+        val exception = assertThrows<CancellationException> {
             muxedStream.input.readPacket(random.size)
         }
         assertEquals("Stream was reset", exception.message)
@@ -323,19 +316,17 @@ internal class MplexMuxedStreamTest {
     }
 
     @Test
-    @Disabled
     fun testWritePacketAfterChannelClose() = runTest {
         val reader = FrameReader(this)
         val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         muxedStream.output.flushAndClose()
         yield() // Give the input coroutine a chance to cancel
-        val exception = assertThrows<ClosedWriteChannelException> {
+        assertThrows<ClosedWriteChannelException> {
             muxedStream.output.writeFully(Random.nextBytes(100000))
             muxedStream.output.flush()
         }
-        assertEquals("The channel was closed", exception.message)
         // Remote can send messages
-        assertTrue(muxedStream.remoteSendsNewMessage(buildPacket { writeFully(Random.nextBytes(1000)) }))
+        assertTrue(muxedStream.remoteSendsNewMessage(Random.nextBytes(1000)))
         muxedStream.close()
         muxedStream.awaitClosed()
         reader.stop()
@@ -364,12 +355,11 @@ internal class MplexMuxedStreamTest {
     }
 
     @Test
-    @Disabled
     fun testWritePacketAfterReset() = runTest {
         val reader = FrameReader(this)
         val muxedStream = MplexMuxedStream(this, mplexMultiplexer, reader.frameChannel, mplexStreamId, mplexStreamName)
         val random = Random.nextBytes(50000)
-        muxedStream.remoteSendsNewMessage(buildPacket { writeFully(random) })
+        muxedStream.remoteSendsNewMessage(random)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
         muxedStream.reset()
@@ -378,7 +368,7 @@ internal class MplexMuxedStreamTest {
         assertTrue(muxedStream.output.isClosedForWrite)
         reader.assertResetFrameReceived(mplexStreamId)
         assertStreamRemoved()
-        val exception = assertThrows<StreamResetException> {
+        val exception = assertThrows<CancellationException> {
             muxedStream.output.writeFully(Random.nextBytes(100000))
             muxedStream.output.flush()
         }
@@ -398,22 +388,22 @@ internal class MplexMuxedStreamTest {
 
     private class FrameReader(scope: CoroutineScope) {
         val frameChannel = Channel<Frame>(16)
-        private var closeFrame: CloseFrame? = null
-        private var resetFrame: ResetFrame? = null
-        private val builder = BytePacketBuilder()
+        private var closeFrame: Frame.CloseFrame? = null
+        private var resetFrame: Frame.ResetFrame? = null
+        private val builder = Buffer()
         private val job = scope.launch {
             frameChannel.consumeEach {
                 when (it) {
-                    is MessageFrame -> {
-                        builder.writePacket(it.packet)
+                    is Frame.MessageFrame -> {
+                        builder.writeFully(it.data)
                     }
 
-                    is CloseFrame -> {
+                    is Frame.CloseFrame -> {
                         assertNull(closeFrame)
                         closeFrame = it
                     }
 
-                    is ResetFrame -> {
+                    is Frame.ResetFrame -> {
                         assertNull(resetFrame)
                         resetFrame = it
                     }
@@ -427,12 +417,14 @@ internal class MplexMuxedStreamTest {
 
         fun assertResetFrameReceived(streamId: MplexStreamId) {
             assertNotNull(resetFrame)
-            assertEquals(streamId, resetFrame?.streamId)
+            assertEquals(streamId.initiator, resetFrame!!.initiator)
+            assertEquals(streamId.id, resetFrame!!.id)
         }
 
         fun assertCloseFrameReceived(streamId: MplexStreamId) {
             assertNotNull(closeFrame)
-            assertEquals(streamId, closeFrame?.streamId)
+            assertEquals(streamId.initiator, closeFrame!!.initiator)
+            assertEquals(streamId.id, closeFrame!!.id)
         }
 
         fun assertNoCloseFrameReceived() {

@@ -48,7 +48,7 @@ abstract class ConnectionBase(
             scope.launch(CoroutineName("conn-close")) {
                 readerJob.value?.flushAndClose()
                 writerJob.value?.cancel()
-                checkChannels()
+                checkCompleted()
             }
         }
     }
@@ -60,11 +60,11 @@ abstract class ConnectionBase(
     abstract fun actualClose(): Throwable?
 
     private fun attachForReading(channel: ByteChannel): WriterJob {
-        return attachFor("reading", channel, writerJob, ::attachForReadingImpl, ::checkChannels)
+        return attachFor("reading", channel, writerJob, ::attachForReadingImpl, ::checkCompleted)
     }
 
     private fun attachForWriting(channel: ByteChannel): ReaderJob {
-        return attachFor("writing", channel, readerJob, ::attachForWritingImpl, ::checkChannels)
+        return attachFor("writing", channel, readerJob, ::attachForWritingImpl, ::checkCompleted)
     }
 
     private inline fun <J : ChannelJob> attachFor(
@@ -96,7 +96,7 @@ abstract class ConnectionBase(
         return j
     }
 
-    private fun checkChannels() {
+    private fun checkCompleted() {
         if (closeFlag.value && readerJob.completedOrNotStarted && writerJob.completedOrNotStarted) {
             if (actualCloseFlag.compareAndSet(expect = false, update = true)) {
                 val e1 = readerJob.exception

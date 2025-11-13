@@ -531,11 +531,13 @@ class IdServiceTest {
     private fun waitForDisconnectNotification(scope: CoroutineScope, network: Network): Job {
         return scope.launch {
             var disconnected = false
-            network.subscribe(object : Subscriber {
-                override fun disconnected(network: Network, connection: NetworkConnection) {
-                    disconnected = true
-                }
-            })
+            network.subscribe(
+                object : Subscriber {
+                    override fun disconnected(network: Network, connection: NetworkConnection) {
+                        disconnected = true
+                    }
+                },
+            )
             while (!disconnected) {
                 yield()
             }

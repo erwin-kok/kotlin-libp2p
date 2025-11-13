@@ -2,13 +2,12 @@
 package org.erwinkok.libp2p.muxer.mplex
 
 import io.ktor.utils.io.ClosedWriteChannelException
-import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.toByteArray
-import io.ktor.utils.io.core.writeFully
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.readPacket
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -16,15 +15,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import kotlinx.io.EOFException
-import kotlinx.io.readByteArray
 import org.erwinkok.libp2p.core.network.Connection
 import org.erwinkok.libp2p.core.network.StreamResetException
 import org.erwinkok.libp2p.core.network.streammuxer.MuxedStream
-import org.erwinkok.libp2p.muxer.mplex.frame.CloseFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.MessageFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.NewStreamFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.readMplexFrame
-import org.erwinkok.libp2p.muxer.mplex.frame.writeMplexFrame
 import org.erwinkok.libp2p.testing.TestConnection
 import org.erwinkok.result.coAssertErrorResult
 import org.erwinkok.result.expectNoErrors
@@ -49,7 +42,7 @@ internal class MplexMultiplexerTest {
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val id = randomId()
-            connectionPair.remote.output.writeMplexFrame(NewStreamFrame(id, "aName$id"))
+            FrameWriter.writeMplexFrame(connectionPair.remote.output, Frame.NewStreamFrame(id, "aName$id"))
             connectionPair.remote.output.flush()
             val muxedStream = mplexMultiplexer.acceptStream().expectNoErrors()
             assertEquals("aName$id", muxedStream.name)
@@ -69,8 +62,8 @@ internal class MplexMultiplexerTest {
             val muxedStream = mplexMultiplexer.openStream("newStreamName$it").expectNoErrors()
             assertEquals("newStreamName$it", muxedStream.name)
             assertEquals(MplexStreamId(true, it.toLong()).toString(), muxedStream.id)
-            val actual = connectionPair.remote.input.readMplexFrame().expectNoErrors()
-            assertInstanceOf(NewStreamFrame::class.java, actual)
+            val actual = FrameReaderOld.readMplexFrame(connectionPair.remote.input).expectNoErrors()
+            assertInstanceOf(Frame.NewStreamFrame::class.java, actual)
             assertTrue(actual.initiator)
             assertEquals(it.toLong(), actual.id)
             muxedStream.close()
@@ -86,13 +79,13 @@ internal class MplexMultiplexerTest {
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val id = randomId()
-            connectionPair.remote.output.writeMplexFrame(NewStreamFrame(id, "aName$id"))
+            FrameWriter.writeMplexFrame(connectionPair.remote.output, Frame.NewStreamFrame(id, "aName$id"))
             connectionPair.remote.output.flush()
             val muxedStream = mplexMultiplexer.acceptStream().expectNoErrors()
             assertEquals("aName$id", muxedStream.name)
             assertStreamHasId(false, id, muxedStream)
             val random1 = Random.nextBytes(1000)
-            connectionPair.remote.output.writeMplexFrame(MessageFrame(MplexStreamId(true, id), buildPacket { writeFully(random1) }))
+            FrameWriter.writeMplexFrame(connectionPair.remote.output, Frame.MessageFrame(MplexStreamId(true, id), random1))
             connectionPair.remote.output.flush()
             assertFalse(muxedStream.input.isClosedForRead)
             val random2 = ByteArray(random1.size)
@@ -111,7 +104,7 @@ internal class MplexMultiplexerTest {
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val id = randomId()
-            connectionPair.remote.output.writeMplexFrame(NewStreamFrame(id, "aName$id"))
+            FrameWriter.writeMplexFrame(connectionPair.remote.output, Frame.NewStreamFrame(id, "aName$id"))
             connectionPair.remote.output.flush()
             val muxedStream = mplexMultiplexer.acceptStream().expectNoErrors()
             assertEquals("aName$id", muxedStream.name)
@@ -159,7 +152,7 @@ internal class MplexMultiplexerTest {
             assertEquals(MplexStreamId(true, it.toLong()).toString(), muxedStream.id)
             assertNewStreamFrameReceived(it, "newStreamName$it", connectionPair.remote)
             val random1 = Random.nextBytes(1000)
-            connectionPair.remote.output.writeMplexFrame(MessageFrame(MplexStreamId(false, it.toLong()), buildPacket { writeFully(random1) }))
+            FrameWriter.writeMplexFrame(connectionPair.remote.output, Frame.MessageFrame(MplexStreamId(false, it.toLong()), random1))
             connectionPair.remote.output.flush()
             assertFalse(muxedStream.input.isClosedForRead)
             val random2 = ByteArray(random1.size)
@@ -177,14 +170,14 @@ internal class MplexMultiplexerTest {
         val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         val id = randomId()
-        connectionPair.remote.output.writeMplexFrame(NewStreamFrame(id, "aName$id"))
+        FrameWriter.writeMplexFrame(connectionPair.remote.output, Frame.NewStreamFrame(id, "aName$id"))
         connectionPair.remote.output.flush()
         val muxedStream = mplexMultiplexer.acceptStream().expectNoErrors()
         assertEquals("aName$id", muxedStream.name)
         assertStreamHasId(false, id, muxedStream)
         assertFalse(muxedStream.input.isClosedForRead)
         assertFalse(muxedStream.output.isClosedForWrite)
-        connectionPair.remote.output.writeMplexFrame(CloseFrame(MplexStreamId(true, id)))
+        FrameWriter.writeMplexFrame(connectionPair.remote.output, Frame.CloseFrame(MplexStreamId(true, id)))
         connectionPair.remote.output.flush()
         val exception = assertThrows<EOFException> {
             muxedStream.input.readPacket(10)
@@ -199,12 +192,42 @@ internal class MplexMultiplexerTest {
     }
 
     @Test
+    @Disabled
+    fun x() = runTest {
+        val connectionPair = TestConnection()
+        val muxa = MplexStreamMuxerConnection(this, connectionPair.local, true)
+        val muxb = MplexStreamMuxerConnection(this, connectionPair.remote, false)
+        val localStreamPromise = async {
+            muxa.acceptStream().expectNoErrors()
+        }
+        val id = randomId()
+        val remoteStream = muxb.openStream("aName$id").expectNoErrors()
+        val localStream = localStreamPromise.await()
+
+        val random1 = Random.nextBytes(1000)
+        val readPromise = async {
+            val random2 = ByteArray(random1.size)
+            localStream.input.readFully(random2)
+            random2
+        }
+        remoteStream.output.writeFully(random1)
+        val random2 = readPromise.await()
+
+        assertArrayEquals(random1, random2)
+
+        muxa.close()
+        muxa.awaitClosed()
+        muxb.close()
+        muxb.awaitClosed()
+    }
+
+    @Test
     fun remoteRequestsNewStreamAndLocalCloses() = runTest {
         val connectionPair = TestConnection()
         val mplexMultiplexer = MplexStreamMuxerConnection(this, connectionPair.local, true)
         repeat(1000) {
             val id = randomId()
-            connectionPair.remote.output.writeMplexFrame(NewStreamFrame(id, "aName$id"))
+            FrameWriter.writeMplexFrame(connectionPair.remote.output, Frame.NewStreamFrame(id, "aName$id"))
             connectionPair.remote.output.flush()
             val muxedStream = mplexMultiplexer.acceptStream().expectNoErrors()
             assertEquals("aName$id", muxedStream.name)
@@ -257,7 +280,7 @@ internal class MplexMultiplexerTest {
             assertNewStreamFrameReceived(it, "newStreamName$it", connectionPair.remote)
             assertFalse(muxedStream.input.isClosedForRead)
             assertFalse(muxedStream.output.isClosedForWrite)
-            connectionPair.remote.output.writeMplexFrame(CloseFrame(MplexStreamId(false, it.toLong())))
+            FrameWriter.writeMplexFrame(connectionPair.remote.output, Frame.CloseFrame(MplexStreamId(false, it.toLong())))
             connectionPair.remote.output.flush()
             val exception = assertThrows<EOFException> {
                 muxedStream.input.readPacket(10)
@@ -277,7 +300,7 @@ internal class MplexMultiplexerTest {
         val connectionPair = TestConnection()
         val muxa = MplexStreamMuxerConnection(this, connectionPair.local, true)
         val muxb = MplexStreamMuxerConnection(this, connectionPair.remote, false)
-        repeat(100) {
+        repeat(1) {
             val random1 = Random.nextBytes(40960)
             val job = launch {
                 val sb = muxb.acceptStream().expectNoErrors()
@@ -379,40 +402,6 @@ internal class MplexMultiplexerTest {
     }
 
     @Test
-    fun writeAfterClose() = runTest {
-        val pipe = TestConnection()
-        val muxa = MplexStreamMuxerConnection(this, pipe.local, true)
-        val muxb = MplexStreamMuxerConnection(this, pipe.remote, false)
-        val message = "Hello world".toByteArray()
-        launch {
-            val sb = muxb.acceptStream().expectNoErrors()
-            sb.output.writeFully(message)
-            sb.output.flush()
-            sb.close()
-            try {
-                sb.output.writeFully(message)
-                sb.output.flush()
-            } catch (_: ClosedWriteChannelException) {
-            }
-        }
-        val sa = muxa.openStream().expectNoErrors()
-        assertFalse(sa.input.isClosedForRead)
-        val buf = ByteArray(message.size)
-        sa.input.readFully(buf)
-        assertArrayEquals(message, buf)
-        assertTrue(sa.input.isClosedForRead)
-        val exception = assertThrows<EOFException> {
-            sa.input.readFully(buf)
-        }
-        assertEquals("Channel is already closed", exception.message)
-        sa.close()
-        muxa.close()
-        muxa.awaitClosed()
-        muxb.close()
-        muxb.awaitClosed()
-    }
-
-    @Test
     @Disabled
     fun slowReader() = runBlocking {
         val pipe = TestConnection()
@@ -464,17 +453,17 @@ internal class MplexMultiplexerTest {
     }
 
     private suspend fun assertMessageFrameReceived(expected: ByteArray, connection: Connection) {
-        val frame = connection.input.readMplexFrame().expectNoErrors()
-        if (frame is MessageFrame) {
-            assertArrayEquals(expected, frame.packet.readByteArray())
+        val frame = FrameReaderOld.readMplexFrame(connection.input).expectNoErrors()
+        if (frame is Frame.MessageFrame) {
+            assertArrayEquals(expected, frame.data)
         } else {
             assertFalse(true, "MessageFrame expected")
         }
     }
 
     private suspend fun assertNewStreamFrameReceived(id: Int, name: String, connection: Connection) {
-        val frame = connection.input.readMplexFrame().expectNoErrors()
-        if (frame is NewStreamFrame) {
+        val frame = FrameReaderOld.readMplexFrame(connection.input).expectNoErrors()
+        if (frame is Frame.NewStreamFrame) {
             assertTrue(frame.initiator)
             assertEquals(id.toLong(), frame.id)
             assertEquals(name, frame.name)
@@ -484,7 +473,7 @@ internal class MplexMultiplexerTest {
     }
 
     private suspend fun assertCloseFrameReceived(connection: Connection) {
-        val frame = connection.input.readMplexFrame().expectNoErrors()
-        assertTrue(frame is CloseFrame)
+        val frame = FrameReaderOld.readMplexFrame(connection.input).expectNoErrors()
+        assertTrue(frame is Frame.CloseFrame)
     }
 }

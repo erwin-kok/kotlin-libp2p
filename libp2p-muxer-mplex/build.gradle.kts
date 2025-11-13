@@ -12,11 +12,17 @@ dependencies {
     implementation(projects.libp2pCore)
 
     implementation(libs.kotlin.logging)
+    implementation(libs.kotlinx.atomicfu)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.ktor.network)
     implementation(libs.multiformat)
     implementation(libs.result.monad)
-    implementation(libs.kotlinx.atomicfu)
+
+    implementation("io.ktor:ktor-network-tls:3.3.0")
+    implementation("io.ktor:ktor-client-websockets:3.3.0")
+    implementation("io.ktor:ktor-server-websockets:3.3.0")
+    implementation("io.ktor:ktor-client-core:3.3.0")
+    implementation("io.ktor:ktor-client-cio:3.3.0")
 
     testImplementation(testFixtures(libs.result.monad))
     testImplementation(projects.libp2pTesting)
