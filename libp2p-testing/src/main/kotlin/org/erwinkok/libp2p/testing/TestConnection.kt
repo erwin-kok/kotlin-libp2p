@@ -17,7 +17,7 @@ class TestConnection {
     val local = Inner(input, output)
     val remote = Inner(output, input)
 
-    class Inner(
+    inner class Inner(
         private val _input: ByteReadChannel,
         private val _output: ByteWriteChannel,
     ) : Connection {

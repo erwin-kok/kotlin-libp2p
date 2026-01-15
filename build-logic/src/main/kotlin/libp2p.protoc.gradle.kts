@@ -14,7 +14,7 @@ sourceSets {
     }
 }
 
-val protobufVersion = "4.33.0"
+val protobufVersion = "4.31.1"
 
 dependencies {
     implementation("com.google.protobuf:protobuf-kotlin:$protobufVersion")
